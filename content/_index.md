@@ -1,7 +1,7 @@
 ---
 title: "Cinema in the Digital Age"
 description: "Exploring cinema, emotions, and movie culture in a digital world."
-hero_image: "static/images/hero-red-curtain.jpg"
+hero_image: "images/hero-red-curtain.jpg"
 eyebrow: "An interactive cinema experience"
 cta_label: "Enter the Cinema"
 cta_url: "#mood-finder"

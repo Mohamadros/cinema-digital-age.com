@@ -7,6 +7,7 @@ const header = document.querySelector('[data-header]');
 const toggle = document.querySelector('.nav-toggle');
 const nav = document.querySelector('.primary-nav');
 const token = document.querySelector('meta[name="tmdb-token"]')?.content.trim() || '';
+const siteRoot = document.body?.dataset.siteRoot || '/';
 const apiBase = 'https://api.themoviedb.org/3';
 const imageBase = 'https://image.tmdb.org/t/p/w500';
 let genreNames = { 12: 'Adventure', 16: 'Animation', 18: 'Drama', 27: 'Horror', 28: 'Action', 35: 'Comedy', 36: 'History', 53: 'Thriller', 80: 'Crime', 99: 'Documentary', 10749: 'Romance', 10751: 'Family', 878: 'Science Fiction' };
@@ -46,7 +47,7 @@ const tmdb = async (path, params = {}) => {
 };
 
 const posterFallback = title => {
-  return '/images/movie-poster-fallback.svg';
+  return new URL('images/movie-poster-fallback.svg', new URL(siteRoot, location.origin)).toString();
 };
 
 const normalizeMovie = movie => ({

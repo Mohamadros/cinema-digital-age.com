@@ -6,7 +6,7 @@
 {{ $community := site.GetPage "/community" }}
 {{ $about := site.GetPage "/about" }}
 
-<section id="home" class="hero" aria-labelledby="hero-title" style="--hero-image:url('{{ .Params.hero_image }}')">
+<section id="home" class="hero" aria-labelledby="hero-title" style="--hero-image:url('{{ .Params.hero_image | relURL }}')">
   <div class="hero-shade"></div>
   <div class="hero-content">
     <p class="hero-eyebrow">{{ .Params.eyebrow }}</p>
@@ -44,7 +44,7 @@
   </div>
 </section>
 
-<section id="coming-soon" class="section coming-section" style="--section-image:url('/images/cinema-screen.png')">
+<section id="coming-soon" class="section coming-section" style="--section-image:url('{{ "images/cinema-screen.png" | relURL }}')">
   <div class="section-shell">
     {{ partial "section-heading.html" $coming }}
     <div class="movie-toolbar reveal">
@@ -72,7 +72,7 @@
   </div>
 </section>
 
-<section id="interviews" class="section interview-section" style="--section-image:url('{{ $interviews.Params.background }}')">
+<section id="interviews" class="section interview-section" style="--section-image:url('{{ $interviews.Params.background | relURL }}')">
   <div class="section-shell">
     {{ partial "section-heading.html" $interviews }}
     <div class="stats-grid">
@@ -102,7 +102,7 @@
   </div>
 </section>
 
-<section id="about" class="section about-section" style="--section-image:url('/images/cinema-stairway.png')">
+<section id="about" class="section about-section" style="--section-image:url('{{ "images/cinema-stairway.png" | relURL }}')">
   <div class="section-shell about-grid"><div>{{ partial "section-heading.html" $about }}</div><div class="about-content reveal">{{ $about.Content }}</div><aside class="author-card reveal"><div class="author-monogram" aria-hidden="true">YN</div><div><span class="card-label">Created by</span><h3>{{ $about.Params.author }}</h3><p>{{ $about.Params.role }}</p><small>{{ $about.Params.university }} · {{ $about.Params.year }}</small></div></aside></div>
 </section>
 

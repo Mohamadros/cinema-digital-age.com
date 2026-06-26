@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="{{ site.Language.Locale }}">
   <head>{{ partial "head.html" . }}</head>
-  <body>
+  <body data-site-root="{{ site.Home.RelPermalink }}">
     <a class="skip-link" href="#main">Skip to content</a>
     {{ partial "navbar.html" . }}
     <main id="main">{{ block "main" . }}{{ end }}</main>

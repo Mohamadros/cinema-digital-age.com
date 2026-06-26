@@ -1,7 +1,7 @@
 +++
 title = "Past Lives"
 date = 2026-02-11T20:00:00+01:00
-poster = "/images/journal-past-lives.svg"
+poster = "images/journal-past-lives.svg"
 year = "2023"
 rating = 5
 favorite_scene = "The final walk to the taxi, held in silence and possibility."

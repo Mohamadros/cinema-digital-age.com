@@ -2,7 +2,7 @@
 title = "Cinema in Their Words"
 kicker = "Interview results"
 intro = "Audience voices reveal how streaming has changed habits without replacing the social power of the cinema."
-background = "/images/auditorium-seats.png"
+background = "images/auditorium-seats.png"
 weight = 40
 [[stats]]
 value = 72

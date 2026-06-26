@@ -1,7 +1,7 @@
 +++
 title = "Perfect Days"
 date = 2026-01-09T20:00:00+01:00
-poster = "/images/journal-perfect-days.svg"
+poster = "images/journal-perfect-days.svg"
 year = "2023"
 rating = 4
 favorite_scene = "Morning light moving through the trees as another carefully observed day begins."
