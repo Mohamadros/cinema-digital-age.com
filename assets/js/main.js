@@ -232,31 +232,40 @@ const assistantReason=document.querySelector('[data-decision-reason]');
 const assistantMemory=document.querySelector('[data-decision-memory]');
 const assistantStorageKey='cinemaDecisionMemory';
 const providerMap={netflix:'8',prime:'119',disney:'337'};
-const normalizeChoice=value=>String(value||'').trim().toLowerCase();
-const platformAliases={
-  any:['any',''],
-  netflix:['netflix'],
-  prime:['prime','prime video','amazon prime','amazon prime video'],
-  disney:['disney','disney+','disney plus'],
-  cinema:['cinema','big screen','theater','theatre'],
-  library:['library','my own watchlist','watchlist']
-};
-const normalizePlatform=value=>{
-  const normalized=normalizeChoice(value);
-  return Object.entries(platformAliases).find(([,aliases])=>aliases.includes(normalized))?.[0]||normalized;
+function normalizePlatform(value){
+  const normalized=String(value||'')
+    .toLowerCase()
+    .replace(/amazon/g,'')
+    .replace(/video/g,'')
+    .replace(/\+/g,' plus ')
+    .replace(/\s+/g,' ')
+    .trim();
+  if(!normalized||normalized==='any')return '';
+  if(normalized.includes('prime'))return 'prime';
+  if(normalized.includes('netflix'))return 'netflix';
+  if(normalized.includes('disney'))return 'disney';
+  if(normalized.includes('cinema')||normalized.includes('theater')||normalized.includes('theatre')||normalized.includes('big screen'))return 'cinema';
+  if(normalized.includes('library')||normalized.includes('watchlist'))return 'library';
+  return normalized;
+}
+const platformValues=movie=>{
+  const value=movie.platforms??movie.platform??movie.provider??movie.watchProvider??movie.watch_provider;
+  if(Array.isArray(value))return value;
+  if(typeof value==='string')return value.split(/[,/|]+/).map(item=>item.trim()).filter(Boolean);
+  return [];
 };
 const assistantFallback=[
-  {title:'Arrival',year:'2016',runtime:116,rating:7.9,genreIds:[878,18],platforms:['netflix','prime','library'],moods:['thoughtful','curious','inspired','moved'],age:'modern',overview:'A linguist works with the military to communicate with mysterious visitors, changing how she understands time and loss.',genre:'Sci-fi · Drama'},
-  {title:'Interstellar',year:'2014',runtime:169,rating:8.7,genreIds:[878,18],platforms:['prime','cinema','library'],moods:['inspired','thoughtful','moved'],age:'modern',overview:'A group of explorers travel through a wormhole to find humanity a future beyond Earth.',genre:'Sci-fi · Drama'},
-  {title:'Her',year:'2013',runtime:126,rating:8.0,genreIds:[878,10749,18],platforms:['netflix','prime','library'],moods:['lonely','romantic','curious','moved'],age:'modern',overview:'A lonely writer develops a relationship with an operating system that understands him deeply.',genre:'Sci-fi · Romance'},
-  {title:'The Martian',year:'2015',runtime:144,rating:8.0,genreIds:[878,12],platforms:['disney','prime','library'],moods:['inspired','energized','happy'],age:'modern',overview:'An astronaut stranded on Mars uses science, humor, and persistence to survive.',genre:'Sci-fi · Adventure'},
-  {title:'Blade Runner 2049',year:'2017',runtime:164,rating:8.0,genreIds:[878,18,53],platforms:['netflix','prime','library'],moods:['thoughtful','curious','moved'],age:'new',overview:'A young blade runner uncovers a buried secret that could reshape society.',genre:'Sci-fi · Thriller'},
-  {title:'Before Sunrise',year:'1995',runtime:101,rating:8.1,genreIds:[10749,18],platforms:['prime','library'],moods:['romantic','moved','relaxed'],age:'old',overview:'Two strangers meet on a train and spend one night walking and talking through Vienna.',genre:'Romance · Drama'},
-  {title:'Whiplash',year:'2014',runtime:107,rating:8.4,genreIds:[18],platforms:['netflix','prime','library'],moods:['energized','inspired','stressed'],age:'modern',overview:'A young drummer pushes himself under the pressure of a ruthless music teacher.',genre:'Drama'},
-  {title:'Mad Max: Fury Road',year:'2015',runtime:121,rating:8.1,genreIds:[28,878],platforms:['netflix','prime','cinema'],moods:['excited','energized'],age:'modern',overview:'A relentless desert chase turns survival into explosive visual cinema.',genre:'Action · Sci-fi'},
+  {title:'Arrival',year:'2016',runtime:116,rating:7.9,genreIds:[878,18],platforms:['Prime Video','Netflix','My own watchlist'],moods:['thoughtful','curious','inspired','moved'],age:'modern',overview:'A linguist works with the military to communicate with mysterious visitors, changing how she understands time and loss.',genre:'Sci-fi · Drama'},
+  {title:'Interstellar',year:'2014',runtime:169,rating:8.7,genreIds:[878,18],platforms:['Amazon Prime Video','Cinema','My own watchlist'],moods:['inspired','thoughtful','moved'],age:'modern',overview:'A group of explorers travel through a wormhole to find humanity a future beyond Earth.',genre:'Sci-fi · Drama'},
+  {title:'Her',year:'2013',runtime:126,rating:8.0,genreIds:[878,10749,18],platforms:['Netflix','Prime Video','My own watchlist'],moods:['lonely','romantic','curious','moved'],age:'modern',overview:'A lonely writer develops a relationship with an operating system that understands him deeply.',genre:'Sci-fi · Romance'},
+  {title:'The Martian',year:'2015',runtime:144,rating:8.0,genreIds:[878,12],platforms:['Disney+','Amazon Prime Video','My own watchlist'],moods:['inspired','energized','happy'],age:'modern',overview:'An astronaut stranded on Mars uses science, humor, and persistence to survive.',genre:'Sci-fi · Adventure'},
+  {title:'Blade Runner 2049',year:'2017',runtime:164,rating:8.0,genreIds:[878,18,53],platforms:['Netflix','Amazon Prime','My own watchlist'],moods:['thoughtful','curious','moved'],age:'new',overview:'A young blade runner uncovers a buried secret that could reshape society.',genre:'Sci-fi · Thriller'},
+  {title:'Before Sunrise',year:'1995',runtime:101,rating:8.1,genreIds:[10749,18],platforms:['Prime Video','My own watchlist'],moods:['romantic','moved','relaxed'],age:'old',overview:'Two strangers meet on a train and spend one night walking and talking through Vienna.',genre:'Romance · Drama'},
+  {title:'Whiplash',year:'2014',runtime:107,rating:8.4,genreIds:[18],platforms:['Netflix','Amazon Prime Video','My own watchlist'],moods:['energized','inspired','stressed'],age:'modern',overview:'A young drummer pushes himself under the pressure of a ruthless music teacher.',genre:'Drama'},
+  {title:'Mad Max: Fury Road',year:'2015',runtime:121,rating:8.1,genreIds:[28,878],platforms:['Netflix','Prime','Cinema'],moods:['excited','energized'],age:'modern',overview:'A relentless desert chase turns survival into explosive visual cinema.',genre:'Action · Sci-fi'},
   {title:'My Neighbor Totoro',year:'1988',runtime:86,rating:8.1,genreIds:[16,10751],platforms:['netflix','library'],moods:['relaxed','happy','nostalgic'],age:'old',overview:'Two sisters discover gentle forest spirits while adapting to a new home.',genre:'Animation · Family'},
-  {title:'Lost in Translation',year:'2003',runtime:102,rating:7.7,genreIds:[18,10749],platforms:['prime','library'],moods:['lonely','moved','relaxed'],age:'modern',overview:'Two strangers in Tokyo form a quiet connection during a moment of uncertainty.',genre:'Drama · Romance'},
-  {title:'Spider-Man: Into the Spider-Verse',year:'2018',runtime:117,rating:8.4,genreIds:[16,28,12],platforms:['netflix','prime','library'],moods:['happy','energized','inspired'],age:'new',overview:'Miles Morales discovers courage and identity across a visually explosive multiverse.',genre:'Animation · Action'},
+  {title:'Lost in Translation',year:'2003',runtime:102,rating:7.7,genreIds:[18,10749],platforms:['Amazon Prime','My own watchlist'],moods:['lonely','moved','relaxed'],age:'modern',overview:'Two strangers in Tokyo form a quiet connection during a moment of uncertainty.',genre:'Drama · Romance'},
+  {title:'Spider-Man: Into the Spider-Verse',year:'2018',runtime:117,rating:8.4,genreIds:[16,28,12],platforms:['Netflix','Prime Video','My own watchlist'],moods:['happy','energized','inspired'],age:'new',overview:'Miles Morales discovers courage and identity across a visually explosive multiverse.',genre:'Animation · Action'},
   {title:'Cinema Paradiso',year:'1988',runtime:124,rating:8.5,genreIds:[18],platforms:['library'],moods:['nostalgic','moved','romantic'],age:'old',overview:'A filmmaker remembers the theater, mentor, and childhood that shaped his love of cinema.',genre:'Drama'}
 ].map(movie=>({...movie,release_date:`${movie.year}-01-01`,poster:posterFallback(movie.title),trailerQuery:`${movie.title} official trailer`}));
 
@@ -281,8 +290,14 @@ const updateAssistantMemory=()=>{
 const assistantValues=form=>Object.fromEntries(new FormData(form).entries());
 const movieMatchesPlatform=(movie,platform)=>{
   const selected=normalizePlatform(platform);
-  if(selected==='any')return true;
-  return (movie.platforms||[]).map(normalizePlatform).includes(selected);
+  if(!selected)return true;
+  return platformValues(movie).some(value=>{
+    const normalized=normalizePlatform(value);
+    return normalized&&(
+      normalized.includes(selected)||
+      selected.includes(normalized)
+    );
+  });
 };
 const movieMatchesAge=(movie,age)=>{
   const year=Number(movie.year||(movie.release_date||'').slice(0,4)||0);
@@ -340,7 +355,7 @@ const fetchAssistantMovies=async answers=>{
   const data=await tmdb('/discover/movie',params);
   return data.results.map(movie=>{
     const normalized=normalizeMovie(movie);
-    if(provider)normalized.platforms=[normalizePlatform(answers.platform)];
+    if(provider)normalized.platforms=[answers.platform];
     return normalized;
   });
 };
@@ -377,6 +392,7 @@ const renderAssistantRecommendations=async ({scroll=false}={})=>{
   if(!assistantPanel||!assistantResults||!assistantReason)return;
   const requestId=++assistantRenderRequest;
   const answers=assistantValues(assistantForm); const memory=getAssistantMemory();
+  const selectedPlatform=normalizePlatform(answers.platform);
   assistantPanel.hidden=false; assistantPanel.classList.add('is-visible');
   assistantReason.textContent='Calculating the strongest three choices…'; assistantResults.replaceChildren();
   try{
@@ -388,12 +404,18 @@ const renderAssistantRecommendations=async ({scroll=false}={})=>{
       const seen=new Set(candidates.map(movie=>normalizeMovie(movie).title));
       candidates=[...candidates,...assistantFallback.filter(movie=>!seen.has(movie.title))];
     }
+    console.log('Selected platform:', answers.platform, 'Normalized:', selectedPlatform);
+    console.log('Movies with Prime:', candidates.filter(movie=>platformValues(movie).some(platform=>normalizePlatform(platform).includes('prime'))));
     const filtered=candidates.filter(movie=>{
       const normalized=normalizeMovie(movie);
       return (answers.genre==='any'||(normalized.genreIds||[]).includes(Number(answers.genre)))&&movieMatchesTime(movie,answers.time)&&movieMatchesAge(normalized,answers.age)&&movieMatchesPlatform(movie,answers.platform);
     });
-    const exactEnough=filtered.length>=5;
-    const pool=(exactEnough?filtered:candidates).map(movie=>({movie,score:scoreAssistantMovie(movie,answers,memory)})).sort((a,b)=>b.score-a.score).slice(0,5).map(item=>item.movie);
+    const exactTitles=new Set(filtered.map(movie=>normalizeMovie(movie).title));
+    const exactRanked=filtered.map(movie=>({movie,score:scoreAssistantMovie(movie,answers,memory)})).sort((a,b)=>b.score-a.score).map(item=>item.movie);
+    const closeRanked=candidates.filter(movie=>!exactTitles.has(normalizeMovie(movie).title)).map(movie=>({movie,score:scoreAssistantMovie(movie,answers,memory)})).sort((a,b)=>b.score-a.score).map(item=>item.movie);
+    const pool=[...exactRanked,...closeRanked].slice(0,5);
+    console.log('Filtered results:', pool);
+    const exactEnough=exactRanked.length>=5;
     assistantResults.append(...pool.map(createAssistantCard));
     assistantReason.textContent=exactEnough?assistantExplanation(answers,pool.map(normalizeMovie)):closestAssistantExplanation(answers,pool.map(normalizeMovie));
   }catch(error){
