@@ -1,6 +1,6 @@
 +++
-title = "Coming Soon"
+title = "Future Movie Radar"
 kicker = "The next attraction"
-intro = "Explore films approaching the big screen, search by title, and filter by genre."
+intro = "Discover upcoming films before they arrive. Search, filter, watch trailers, and decide what deserves a place on your watchlist."
 weight = 20
 +++

@@ -61,6 +61,11 @@
     <div class="movie-toolbar reveal">
       <label><span>Search movies</span><input type="search" data-movie-search placeholder="Search by title…" autocomplete="off"></label>
       <label><span>Filter by genre</span><select data-genre-filter><option value="">All genres</option></select></label>
+      <label><span>Release month</span><select data-month-filter><option value="">Any month</option></select></label>
+      <label><span>Platform</span><select data-platform-filter><option value="">Any platform</option><option value="cinema">Cinema</option><option value="streaming">Streaming</option><option value="netflix">Netflix</option><option value="prime">Prime Video</option><option value="disney">Disney+</option></select></label>
+      <label><span>Cinema / Streaming</span><select data-release-filter><option value="">All releases</option><option value="cinema">Cinema release</option><option value="streaming">Streaming release</option></select></label>
+      <label><span>Trailer available</span><select data-trailer-filter><option value="">Any trailer status</option><option value="yes">Trailer out</option><option value="no">No trailer yet</option></select></label>
+      <label><span>Anticipation</span><select data-anticipated-filter><option value="">All buzz levels</option><option value="high">Most anticipated</option><option value="medium">Medium buzz or higher</option></select></label>
     </div>
     <aside class="api-notice" data-api-notice hidden><strong>Demo catalogue active</strong><span>Add your TMDB Read Access Token in <code>hugo.toml</code> to load the full future-release catalogue and official movie posters.</span></aside>
     <div class="movie-status" data-coming-status role="status">Preparing the next attractions…</div>

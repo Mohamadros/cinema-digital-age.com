@@ -32,7 +32,7 @@ enableRobotsTXT = true
   url = "/#mood-finder"
   weight = 20
 [[menu.main]]
-  name = "Coming Soon"
+  name = "Future Radar"
   url = "/#coming-soon"
   weight = 30
 [[menu.main]]

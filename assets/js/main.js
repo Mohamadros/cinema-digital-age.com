@@ -142,28 +142,175 @@ feedbackForm?.querySelectorAll('[data-score]').forEach(button => button.addEvent
 }));
 
 const fallbackUpcoming = [
-  ['The Odyssey','2026-07-17',0,'A mythic voyage home across a world of gods, monsters, and human endurance.',[12,18]],
-  ['Spider-Man: Brand New Day','2026-07-31',0,'A new chapter begins for the web-slinging hero in New York City.',[28,12]],
-  ['Minions 3','2026-07-01',0,'The mischievous yellow crew returns for another animated adventure.',[16,35]],
-  ['Avengers: Doomsday','2026-12-18',0,'Heroes across the universe assemble against a formidable new threat.',[28,878]],
-  ['Dune: Part Three','2026-12-18',0,'The desert saga continues as power, prophecy, and consequence converge.',[878,12]],
-  ['Spider-Man: Beyond the Spider-Verse','2027-06-04',0,'Miles Morales continues his journey across a limitless animated multiverse.',[16,28]],
-  ['The Batman: Part II','2027-10-01',0,'Gotham’s detective returns to confront a new shadow over the city.',[80,18]],
-  ['Frozen III','2027-11-24',0,'The sisters of Arendelle begin another journey beyond their kingdom.',[16,10751]]
-].map(m => ({ title:m[0], release_date:m[1], rating:m[2], overview:m[3], genreIds:m[4], genre:m[4].map(id=>genreNames[id]).filter(Boolean).join(' · '), poster:posterFallback(m[0]) }));
+  {title:'The Odyssey',release_date:'2026-07-17',overview:'A mythic voyage home across a world of gods, monsters, and human endurance.',genreIds:[12,18],platform:'Cinema release',releaseType:'cinema',director:'Christopher Nolan',actors:'Matt Damon, Tom Holland, Anne Hathaway',trailerAvailable:false,buzz:'High',tag:'Highly anticipated',why:'A large-format mythic adventure from a filmmaker known for theatrical spectacle.'},
+  {title:'Spider-Man: Brand New Day',release_date:'2026-07-31',overview:'A new chapter begins for the web-slinging hero in New York City.',genreIds:[28,12],platform:'Cinema release',releaseType:'cinema',director:'Destin Daniel Cretton',actors:'Tom Holland, Zendaya',trailerAvailable:false,buzz:'High',tag:'Highly anticipated',why:'A fresh Spider-Man chapter has strong franchise momentum and broad audience interest.'},
+  {title:'Minions 3',release_date:'2026-07-01',overview:'The mischievous yellow crew returns for another animated adventure.',genreIds:[16,35],platform:'Cinema release',releaseType:'cinema',director:'Pierre Coffin',actors:'Voice cast TBA',trailerAvailable:false,buzz:'Medium',tag:'Limited information',why:'A family-friendly franchise title likely to be easy, playful summer cinema.'},
+  {title:'Avengers: Doomsday',release_date:'2026-12-18',overview:'Heroes across the universe assemble against a formidable new threat.',genreIds:[28,878],platform:'Cinema release',releaseType:'cinema',director:'Anthony Russo, Joe Russo',actors:'Marvel ensemble cast',trailerAvailable:false,buzz:'High',tag:'Highly anticipated',why:'A major crossover event film with built-in audience anticipation.'},
+  {title:'Dune: Part Three',release_date:'2026-12-18',overview:'The desert saga continues as power, prophecy, and consequence converge.',genreIds:[878,12],platform:'Cinema release',releaseType:'cinema',director:'Denis Villeneuve',actors:'Timothée Chalamet, Zendaya',trailerAvailable:false,buzz:'High',tag:'Festival buzz',why:'The previous films built a strong visual identity, making this a likely big-screen event.'},
+  {title:'Spider-Man: Beyond the Spider-Verse',release_date:'2027-06-04',overview:'Miles Morales continues his journey across a limitless animated multiverse.',genreIds:[16,28],platform:'Cinema release',releaseType:'cinema',director:'Joaquim Dos Santos, Kemp Powers, Justin K. Thompson',actors:'Shameik Moore, Hailee Steinfeld',trailerAvailable:false,buzz:'High',tag:'Highly anticipated',why:'The series is known for innovative animation and emotional superhero storytelling.'},
+  {title:'The Batman: Part II',release_date:'2027-10-01',overview:'Gotham’s detective returns to confront a new shadow over the city.',genreIds:[80,18],platform:'Cinema release',releaseType:'cinema',director:'Matt Reeves',actors:'Robert Pattinson',trailerAvailable:false,buzz:'High',tag:'Highly anticipated',why:'A noir detective tone could make this stand apart from typical superhero releases.'},
+  {title:'Frozen III',release_date:'2027-11-24',overview:'The sisters of Arendelle begin another journey beyond their kingdom.',genreIds:[16,10751],platform:'Cinema release',releaseType:'cinema',director:'Jennifer Lee',actors:'Kristen Bell, Idina Menzel',trailerAvailable:false,buzz:'High',tag:'Highly anticipated',why:'A major family release with music, nostalgia, and strong global recognition.'},
+  {title:'28 Years Later: The Bone Temple',release_date:'2026-01-16',overview:'A new chapter expands the infected-world horror story with fresh survivors and danger.',genreIds:[27,53],platform:'Cinema release',releaseType:'cinema',director:'Nia DaCosta',actors:'Cast TBA',trailerAvailable:true,buzz:'Medium',tag:'Trailer out',why:'A revived horror universe could attract viewers looking for tense theatrical atmosphere.'},
+  {title:'Project Hail Mary',release_date:'2026-03-20',overview:'An astronaut wakes alone on a mission that could decide the fate of Earth.',genreIds:[878,12],platform:'Cinema release',releaseType:'cinema',director:'Phil Lord, Christopher Miller',actors:'Ryan Gosling',trailerAvailable:false,buzz:'High',tag:'Highly anticipated',why:'A science-fiction survival premise with emotional scale and broad audience appeal.'},
+  {title:'The Mandalorian & Grogu',release_date:'2026-05-22',overview:'The Star Wars duo moves from streaming culture into a theatrical adventure.',genreIds:[878,12],platform:'Cinema release',releaseType:'cinema',director:'Jon Favreau',actors:'Pedro Pascal',trailerAvailable:false,buzz:'High',tag:'Highly anticipated',why:'It is interesting as a streaming-born story returning to cinema screens.'},
+  {title:'Wake Up Dead Man',release_date:'2026-01-01',overview:'Detective Benoit Blanc returns for a new mystery with a new ensemble.',genreIds:[80,35,18],platform:'Netflix',releaseType:'streaming',director:'Rian Johnson',actors:'Daniel Craig, ensemble cast',trailerAvailable:false,buzz:'Medium',tag:'Limited information',why:'A new mystery from an audience-friendly series could be a strong streaming event.'},
+  {title:'Mercy',release_date:'2026-01-23',overview:'A near-future thriller about justice, technology, and a race against time.',genreIds:[878,53],platform:'Prime Video',releaseType:'streaming',director:'Timur Bekmambetov',actors:'Chris Pratt, Rebecca Ferguson',trailerAvailable:false,buzz:'Medium',tag:'No audience rating yet',why:'The tech-thriller premise connects directly with digital-age questions about law, surveillance, and control.'},
+  {title:'The Bluff',release_date:'2026-09-18',overview:'A period adventure about survival, danger, and buried secrets.',genreIds:[12,18],platform:'Prime Video',releaseType:'streaming',director:'Frank E. Flowers',actors:'Priyanka Chopra Jonas',trailerAvailable:false,buzz:'Low',tag:'Limited information',why:'A streaming adventure release could be worth tracking if early footage shows strong atmosphere.'},
+  {title:'Narnia: The Magician’s Nephew',release_date:'2026-11-26',overview:'A fantasy origin story opens a door into another world.',genreIds:[12,10751],platform:'Netflix',releaseType:'streaming',director:'Greta Gerwig',actors:'Cast TBA',trailerAvailable:false,buzz:'High',tag:'Highly anticipated',why:'A major literary fantasy property from a high-profile filmmaker could become a major streaming event.'}
+].map(movie => ({...movie, rating:0, genre:movie.genreIds.map(id=>genreNames[id]).filter(Boolean).join(' · '), poster:posterFallback(movie.title)}));
 
 const comingResults = document.querySelector('[data-coming-results]');
 const comingStatus = document.querySelector('[data-coming-status]');
 const genreFilter = document.querySelector('[data-genre-filter]');
 const movieSearch = document.querySelector('[data-movie-search]');
+const monthFilter = document.querySelector('[data-month-filter]');
+const platformFilter = document.querySelector('[data-platform-filter]');
+const releaseFilter = document.querySelector('[data-release-filter]');
+const trailerFilter = document.querySelector('[data-trailer-filter]');
+const anticipatedFilter = document.querySelector('[data-anticipated-filter]');
 const loadMoreButton = document.querySelector('[data-load-more]');
 const apiNotice = document.querySelector('[data-api-notice]');
+const radarWatchlistKey='futureMovieRadarWatchlist';
+const radarHiddenKey='futureMovieRadarHidden';
 let comingMovies = [];
 let comingPage = 0;
 let comingTotalPages = 1;
 let comingLoading = false;
 
 const fillGenres = genres => { genres.forEach(genre => { const option=document.createElement('option'); option.value=genre.id; option.textContent=genre.name; genreFilter?.append(option); }); };
+const getRadarStore=key=>{try{return JSON.parse(localStorage.getItem(key)||'[]');}catch{return [];}};
+const setRadarStore=(key,value)=>{try{localStorage.setItem(key,JSON.stringify(value));}catch{}};
+const monthLabel=value=>{
+  if(!value)return '';
+  const date=new Date(`${value}-01T00:00:00`);
+  return date.toLocaleDateString(undefined,{month:'long',year:'numeric'});
+};
+const fillReleaseMonths=movies=>{
+  if(!monthFilter)return;
+  const current=monthFilter.value;
+  const months=[...new Set(movies.map(movie=>(movie.release_date||movie.releaseDate||'').slice(0,7)).filter(Boolean))].sort();
+  monthFilter.replaceChildren(new Option('Any month',''),...months.map(month=>new Option(monthLabel(month),month)));
+  monthFilter.value=months.includes(current)?current:'';
+};
+const normalizeRadarMovie=rawMovie=>{
+  const movie=normalizeMovie(rawMovie);
+  const releaseType=rawMovie.releaseType||rawMovie.release_type||'cinema';
+  const platform=rawMovie.platform||rawMovie.platforms?.[0]||(releaseType==='streaming'?'Streaming':'Cinema release');
+  const buzz=rawMovie.buzz||(rawMovie.popularity>90?'High':rawMovie.popularity>35?'Medium':'Low');
+  const trailerAvailable=Boolean(rawMovie.trailerAvailable||rawMovie.trailer_available);
+  const tag=rawMovie.tag||(trailerAvailable?'Trailer out':buzz==='High'?'Highly anticipated':buzz==='Medium'?'No audience rating yet':'Limited information');
+  return {
+    ...movie,
+    releaseType,
+    platform,
+    director:rawMovie.director||'Director not announced',
+    actors:rawMovie.actors||rawMovie.cast||'Main cast not fully announced',
+    trailerAvailable,
+    buzz,
+    tag,
+    why:rawMovie.why||`This ${movie.genre||'film'} is worth tracking because its release date, genre, and early visibility suggest audience interest.`,
+    popularity:Number(rawMovie.popularity||0)
+  };
+};
+const buzzRank=buzz=>({Low:1,Medium:2,High:3}[buzz]||1);
+const getRadarFilters=()=>({
+  query:movieSearch?.value.trim().toLowerCase()||'',
+  genre:genreFilter?.value||'',
+  month:monthFilter?.value||'',
+  platform:normalizePlatform(platformFilter?.value||''),
+  release:releaseFilter?.value||'',
+  trailer:trailerFilter?.value||'',
+  anticipated:anticipatedFilter?.value||''
+});
+const filterRadarMovies=(movies,filters=getRadarFilters())=>{
+  const hidden=new Set(getRadarStore(radarHiddenKey));
+  return movies.map(normalizeRadarMovie).filter(movie=>{
+    const releaseMonth=(movie.releaseDate||movie.release_date||'').slice(0,7);
+    const moviePlatform=normalizePlatform(movie.platform);
+    const genreMatch=!filters.genre||movie.genreIds.includes(Number(filters.genre));
+    const platformMatch=!filters.platform||moviePlatform.includes(filters.platform)||filters.platform.includes(moviePlatform)||movie.releaseType===filters.platform;
+    const releaseMatch=!filters.release||movie.releaseType===filters.release;
+    const trailerMatch=!filters.trailer||(filters.trailer==='yes'?movie.trailerAvailable:!movie.trailerAvailable);
+    const anticipationMatch=!filters.anticipated||(filters.anticipated==='high'?movie.buzz==='High':buzzRank(movie.buzz)>=2);
+    return !hidden.has(movie.title)&&
+      (!filters.query||movie.title.toLowerCase().includes(filters.query))&&
+      genreMatch&&
+      (!filters.month||releaseMonth===filters.month)&&
+      platformMatch&&
+      releaseMatch&&
+      trailerMatch&&
+      anticipationMatch;
+  }).sort((a,b)=>anticipatedFilter?.value?buzzRank(b.buzz)-buzzRank(a.buzz)||a.releaseDate.localeCompare(b.releaseDate):a.releaseDate.localeCompare(b.releaseDate));
+};
+const createRadarCard=rawMovie=>{
+  const movie=normalizeRadarMovie(rawMovie);
+  const watchlist=new Set(getRadarStore(radarWatchlistKey));
+  const card=document.createElement('article');
+  card.className='radar-card movie-card';
+  card.dataset.buzz=movie.buzz.toLowerCase();
+  const poster=document.createElement('div');
+  poster.className='movie-poster radar-poster';
+  const image=document.createElement('img');
+  image.src=movie.poster; image.alt=`Poster for ${movie.title}`; image.loading='lazy';
+  image.addEventListener('error',()=>{image.src=posterFallback(movie.title)},{once:true});
+  const label=document.createElement('span');
+  label.className='movie-rating radar-signal';
+  label.textContent=movie.tag;
+  poster.append(image,label);
+  const copy=document.createElement('div');
+  copy.className='movie-copy radar-copy';
+  const meta=document.createElement('div');
+  meta.className='movie-meta';
+  meta.innerHTML=`<span>${movie.releaseDate||movie.year}</span><span>${movie.genre||'Genre TBA'}</span>`;
+  const title=document.createElement('h3');
+  title.textContent=movie.title;
+  const synopsis=document.createElement('p');
+  synopsis.textContent=movie.overview;
+  const signals=document.createElement('dl');
+  signals.className='radar-signals';
+  [
+    ['Release',movie.releaseDate||'Date TBA'],
+    ['Platform',movie.platform],
+    ['Trailer',movie.trailerAvailable?'Trailer available':'No trailer yet'],
+    ['Buzz',movie.buzz],
+    ['Director',movie.director],
+    ['Main actors',movie.actors]
+  ].forEach(([term,value])=>{
+    const group=document.createElement('div');
+    const dt=document.createElement('dt'); dt.textContent=term;
+    const dd=document.createElement('dd'); dd.textContent=value;
+    group.append(dt,dd); signals.append(group);
+  });
+  const why=document.createElement('p');
+  why.className='radar-why';
+  why.innerHTML=`<strong>Why this might be worth watching:</strong> ${movie.why}`;
+  const actions=document.createElement('div');
+  actions.className='radar-actions';
+  const watch=document.createElement('button');
+  watch.type='button'; watch.className='watchlist-button'; watch.textContent=watchlist.has(movie.title)?'In Watchlist':'Add to Watchlist';
+  watch.addEventListener('click',()=>{
+    const next=new Set(getRadarStore(radarWatchlistKey));
+    next.has(movie.title)?next.delete(movie.title):next.add(movie.title);
+    setRadarStore(radarWatchlistKey,[...next]);
+    watch.textContent=next.has(movie.title)?'In Watchlist':'Add to Watchlist';
+    watch.classList.toggle('is-active',next.has(movie.title));
+  });
+  watch.classList.toggle('is-active',watchlist.has(movie.title));
+  const trailer=document.createElement('button');
+  trailer.type='button'; trailer.className='trailer-button'; trailer.innerHTML='<span aria-hidden="true">▶</span> Trailer';
+  trailer.addEventListener('click',()=>openTrailer(movie));
+  const hide=document.createElement('button');
+  hide.type='button'; hide.className='not-interested-button'; hide.textContent='Not interested';
+  hide.addEventListener('click',()=>{
+    const hidden=new Set(getRadarStore(radarHiddenKey));
+    hidden.add(movie.title); setRadarStore(radarHiddenKey,[...hidden]);
+    showComing(filterRadarMovies(comingMovies));
+  });
+  actions.append(watch,trailer,hide);
+  copy.append(meta,title,synopsis,signals,why,actions);
+  card.append(poster,copy);
+  return card;
+};
 const preserveComingPosition = callback => {
   const toolbar = document.querySelector('.movie-toolbar');
   const before = toolbar?.getBoundingClientRect().top || 0;
@@ -171,9 +318,11 @@ const preserveComingPosition = callback => {
   requestAnimationFrame(() => { const after=toolbar?.getBoundingClientRect().top||0; window.scrollBy(0,after-before); });
 };
 const showComing = (movies, append=false) => {
-  preserveComingPosition(() => renderMovies(comingResults,movies,append));
+  const cards=movies.map(createRadarCard);
+  preserveComingPosition(() => { if(append)comingResults.append(...cards); else comingResults.replaceChildren(...cards); });
+  cards.forEach(card=>card.classList.add('is-visible'));
   const total=comingResults.children.length;
-  comingStatus.textContent=`${total} ${total===1?'film':'films'} on the marquee${comingTotalPages>comingPage?' — more available':''}.`;
+  comingStatus.textContent=`${total} ${total===1?'future film':'future films'} on the radar${comingTotalPages>comingPage?' — more available':''}.`;
   if(loadMoreButton) loadMoreButton.hidden=!token||comingPage>=comingTotalPages;
 };
 const loadComingPage = async (reset=false) => {
@@ -181,12 +330,27 @@ const loadComingPage = async (reset=false) => {
   if(reset){comingPage=0;comingTotalPages=1;comingResults.replaceChildren();}
   if(comingPage>=comingTotalPages&&comingPage!==0)return;
   comingLoading=true;if(loadMoreButton)loadMoreButton.disabled=true;comingStatus.textContent='Loading future releases…';
-  const nextPage=comingPage+1;const query=movieSearch.value.trim();const genre=genreFilter.value;const today=new Date().toISOString().slice(0,10);
+  const nextPage=comingPage+1;const filters=getRadarFilters();const query=filters.query;const genre=filters.genre;const today=new Date().toISOString().slice(0,10);
   try{
     let data;
     if(query.length>2){data=await tmdb('/search/movie',{query,include_adult:'false',region:'DE',page:String(nextPage)});data.results=data.results.filter(movie=>!movie.release_date||movie.release_date>=today);}
-    else{data=await tmdb('/discover/movie',{'primary_release_date.gte':today,region:'DE',with_release_type:'2|3',with_genres:genre,sort_by:'primary_release_date.asc',include_adult:'false',page:String(nextPage)});}
-    comingPage=nextPage;comingTotalPages=Math.min(Number(data.total_pages)||1,500);const batch=data.results.map(normalizeMovie);comingMovies=reset?batch:[...comingMovies,...batch];showComing(batch,!reset&&comingPage>1);
+    else{
+      const params={'primary_release_date.gte':today,region:'DE',with_release_type:filters.release==='streaming'?'4':filters.release==='cinema'?'2|3':'2|3|4',with_genres:genre,sort_by:filters.anticipated?'popularity.desc':'primary_release_date.asc',include_adult:'false',page:String(nextPage)};
+      if(filters.month){params['primary_release_date.gte']=`${filters.month}-01`;params['primary_release_date.lte']=`${filters.month}-31`;}
+      data=await tmdb('/discover/movie',params);
+    }
+    comingPage=nextPage;comingTotalPages=Math.min(Number(data.total_pages)||1,500);
+    const batch=data.results.map(movie=>({
+      ...movie,
+      releaseType:filters.release||'cinema',
+      platform:filters.release==='streaming'?'Streaming':'Cinema release',
+      trailerAvailable:false,
+      buzz:movie.popularity>90?'High':movie.popularity>35?'Medium':'Low',
+      tag:movie.popularity>90?'Highly anticipated':'No audience rating yet'
+    }));
+    comingMovies=reset?batch:[...comingMovies,...batch];
+    fillReleaseMonths(comingMovies);
+    showComing(filterRadarMovies(comingMovies));
   }catch{comingStatus.textContent='The live movie catalogue could not be reached. Please check the TMDB token.';}
   finally{comingLoading=false;if(loadMoreButton)loadMoreButton.disabled=false;}
 };
@@ -194,16 +358,20 @@ const loadComing = async () => {
   if(token){
     try{const genres=await tmdb('/genre/movie/list');genreNames=Object.fromEntries(genres.genres.map(g=>[g.id,g.name]));fillGenres(genres.genres);await loadComingPage(true);return;}catch{}
   }
-  apiNotice.hidden=false;comingMovies=fallbackUpcoming.map(normalizeMovie);fillGenres(Object.entries(genreNames).map(([id,name])=>({id,name})));comingPage=1;comingTotalPages=1;showComing(comingMovies);comingStatus.textContent=`${comingMovies.length} demonstration films. Connect TMDB for the complete live catalogue and official posters.`;
+  apiNotice.hidden=false;comingMovies=fallbackUpcoming;fillGenres(Object.entries(genreNames).map(([id,name])=>({id,name})));fillReleaseMonths(comingMovies);comingPage=1;comingTotalPages=1;showComing(filterRadarMovies(comingMovies));comingStatus.textContent=`${comingMovies.length} radar demonstration films. Connect TMDB for the complete live catalogue and official posters.`;
 };
-genreFilter?.addEventListener('change',()=>{if(token)loadComingPage(true);else{const genre=genreFilter.value;showComing(genre?comingMovies.filter(movie=>movie.genreIds.includes(Number(genre))):comingMovies);}});
+const applyRadarFilters=()=>{if(token)loadComingPage(true);else showComing(filterRadarMovies(comingMovies));};
+genreFilter?.addEventListener('change',applyRadarFilters);
+monthFilter?.addEventListener('change',applyRadarFilters);
+platformFilter?.addEventListener('change',applyRadarFilters);
+releaseFilter?.addEventListener('change',applyRadarFilters);
+trailerFilter?.addEventListener('change',applyRadarFilters);
+anticipatedFilter?.addEventListener('change',applyRadarFilters);
 loadMoreButton?.addEventListener('click',()=>loadComingPage(false));
 let searchTimer;
 movieSearch?.addEventListener('input', () => {
   clearTimeout(searchTimer); searchTimer=setTimeout(async () => {
-    const query=movieSearch.value.trim();
-    if(token){loadComingPage(true);return;}
-    showComing(comingMovies.filter(movie=>movie.title.toLowerCase().includes(query.toLowerCase())));
+    applyRadarFilters();
   },350);
 });
 if (comingResults) loadComing();
