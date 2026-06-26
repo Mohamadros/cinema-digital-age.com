@@ -11,7 +11,7 @@ enableRobotsTXT = true
   accentColor = "#d4af37"
   # Add a TMDB API Read Access Token here. For a production site, prefer a
   # serverless proxy so the token is not exposed in the browser source.
-  tmdbToken = ""
+  tmdbToken = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiIxNDBmNDdhZTgyMWUyMWYyNmEwNGY3YjIzNzkzYTkxOCIsIm5iZiI6MTc4MTg4NDk1NC4xOTI5OTk4LCJzdWIiOiI2YTM1NjgxYTMyNjJhNTcxNjdiZTg2ZGQiLCJzY29wZXMiOlsiYXBpX3JlYWQiXSwidmVyc2lvbiI6MX0.rpgf4IjhHr3K_js8T8cv2QYjN-R10x34gO8vstbBGz8"
 
 [taxonomies]
   category = "categories"
