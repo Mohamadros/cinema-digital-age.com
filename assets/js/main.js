@@ -537,6 +537,31 @@ const movieMatchesMood=(movie,answers)=>{
   if(!moods.length)return false;
   return moods.includes(answers.currentMood)||moods.includes(answers.targetMood);
 };
+const inferAssistantMoods=movie=>{
+  const genreIds=movie.genreIds||movie.genre_ids||[];
+  const text=`${movie.title||''} ${movie.overview||''} ${movie.genre||''}`.toLowerCase();
+  const moods=new Set();
+  if(genreIds.includes(35)||genreIds.includes(16)||genreIds.includes(10751))moods.add('happy').add('relaxed');
+  if(genreIds.includes(10749))moods.add('romantic').add('moved');
+  if(genreIds.includes(18))moods.add('thoughtful').add('moved');
+  if(genreIds.includes(878)||genreIds.includes(99)||genreIds.includes(36))moods.add('thoughtful').add('curious');
+  if(genreIds.includes(28)||genreIds.includes(12))moods.add('excited').add('energized');
+  if(genreIds.includes(53)||genreIds.includes(27)||genreIds.includes(80))moods.add('stressed').add('excited');
+  if(/\b(love|romance|relationship|heart|wedding)\b/.test(text))moods.add('romantic');
+  if(/\b(lonely|alone|isolation|connection|friendship|family)\b/.test(text))moods.add('lonely').add('moved');
+  if(/\b(dream|hope|survive|journey|future|mission|hero)\b/.test(text))moods.add('inspired');
+  if(/\b(memory|past|childhood|home|return)\b/.test(text))moods.add('nostalgic');
+  if(/\b(mystery|secret|question|truth|identity)\b/.test(text))moods.add('curious').add('thoughtful');
+  return [...moods];
+};
+const enrichAssistantMovie=(rawMovie,platform='')=>{
+  const movie=normalizeMovie(rawMovie);
+  movie.moods=rawMovie.moods&&rawMovie.moods.length?rawMovie.moods:inferAssistantMoods(movie);
+  movie.runtime=rawMovie.runtime||movie.runtime||0;
+  movie.platforms=platform?[platform]:(rawMovie.platforms||(rawMovie.platform?[rawMovie.platform]:[]));
+  movie.age=rawMovie.age;
+  return movie;
+};
 const scoreAssistantMovie=(movie,answers,memory)=>{
   let score=Number(movie.rating||movie.vote_average||0);
   const genreIds=movie.genreIds||movie.genre_ids||[];
@@ -565,7 +590,7 @@ const closestAssistantExplanation=(answers,movies)=>{
 };
 const fetchAssistantMovies=async answers=>{
   if(!token)throw new Error('TMDB token not configured');
-  const params={include_adult:'false',sort_by:'vote_average.desc','vote_count.gte':'700',page:'1'};
+  const params={include_adult:'false',sort_by:'popularity.desc','vote_count.gte':'120'};
   if(answers.genre!=='any')params.with_genres=answers.genre;
   if(answers.time==='short')params['with_runtime.lte']='100';
   if(answers.time==='medium'){params['with_runtime.gte']='95';params['with_runtime.lte']='140';}
@@ -575,12 +600,19 @@ const fetchAssistantMovies=async answers=>{
   if(answers.age==='old')params['primary_release_date.lte']='1999-12-31';
   const provider=providerMap[normalizePlatform(answers.platform)];
   if(provider){params.watch_region='DE';params.with_watch_providers=provider;}
-  const data=await tmdb('/discover/movie',params);
-  return data.results.map(movie=>{
-    const normalized=normalizeMovie(movie);
-    if(provider)normalized.platforms=[answers.platform];
-    return normalized;
-  });
+  const firstPage=((assistantVariant*4)%36)+1;
+  const pages=[firstPage,firstPage+1,firstPage+2,firstPage+3].map(page=>((page-1)%40)+1);
+  const responses=await Promise.all(pages.map(page=>tmdb('/discover/movie',{...params,page:String(page)}).catch(()=>({results:[]}))));
+  const seen=new Set();
+  return responses.flatMap(data=>data.results||[])
+    .filter(movie=>movie.poster_path)
+    .filter(movie=>{
+      const key=movie.id||movie.title;
+      if(seen.has(key))return false;
+      seen.add(key);
+      return true;
+    })
+    .map(movie=>enrichAssistantMovie(movie,provider?answers.platform:''));
 };
 const openMovieDetails=movie=>{
   const normalized=normalizeMovie(movie);
