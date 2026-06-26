@@ -590,7 +590,8 @@ const closestAssistantExplanation=(answers,movies)=>{
 };
 const fetchAssistantMovies=async answers=>{
   if(!token)throw new Error('TMDB token not configured');
-  const params={include_adult:'false',sort_by:'popularity.desc','vote_count.gte':'120'};
+  const sortOptions=['popularity.desc','vote_average.desc','revenue.desc','primary_release_date.desc'];
+  const params={include_adult:'false',sort_by:sortOptions[assistantVariant%sortOptions.length],'vote_count.gte':assistantVariant%2?80:120};
   if(answers.genre!=='any')params.with_genres=answers.genre;
   if(answers.time==='short')params['with_runtime.lte']='100';
   if(answers.time==='medium'){params['with_runtime.gte']='95';params['with_runtime.lte']='140';}
@@ -600,8 +601,8 @@ const fetchAssistantMovies=async answers=>{
   if(answers.age==='old')params['primary_release_date.lte']='1999-12-31';
   const provider=providerMap[normalizePlatform(answers.platform)];
   if(provider){params.watch_region='DE';params.with_watch_providers=provider;}
-  const firstPage=((assistantVariant*4)%36)+1;
-  const pages=[firstPage,firstPage+1,firstPage+2,firstPage+3].map(page=>((page-1)%40)+1);
+  const firstPage=((assistantVariant*7)%70)+1;
+  const pages=[firstPage,firstPage+3,firstPage+9,firstPage+17,firstPage+28,firstPage+39].map(page=>((page-1)%80)+1);
   const responses=await Promise.all(pages.map(page=>tmdb('/discover/movie',{...params,page:String(page)}).catch(()=>({results:[]}))));
   const seen=new Set();
   return responses.flatMap(data=>data.results||[])
@@ -646,16 +647,22 @@ let assistantRenderRequest=0;
 let assistantVariant=0;
 let lastAssistantSignature='';
 let lastAssistantFilterSignature='';
+let recentAssistantTitles=[];
 const shuffledMovies=(movies,variant=0)=>movies.map((movie,index)=>({movie,sort:Math.random()+((variant%11)*0.0001)+(index*0.00001)})).sort((a,b)=>a.sort-b.sort).map(item=>item.movie);
 const selectAssistantMovies=(exactRanked,closeRanked,{different=false}={})=>{
-  const exactPool=different?shuffledMovies(exactRanked,assistantVariant):exactRanked;
-  const closePool=different?shuffledMovies(closeRanked,assistantVariant+3):closeRanked;
+  const recent=new Set(recentAssistantTitles);
+  const enoughFresh=[...exactRanked,...closeRanked].filter(movie=>!recent.has(normalizeMovie(movie).title)).length>=5;
+  const avoidRecent=movie=>!enoughFresh||!recent.has(normalizeMovie(movie).title);
+  const exactPool=(different?shuffledMovies(exactRanked,assistantVariant):exactRanked).filter(avoidRecent);
+  const closePool=(different?shuffledMovies(closeRanked,assistantVariant+3):closeRanked).filter(avoidRecent);
   let selection=[...exactPool.slice(0,5),...closePool].slice(0,5);
   const combined=[...exactRanked,...closeRanked];
+  if(selection.length<5)selection=[...selection,...shuffledMovies(combined,assistantVariant+5).filter(movie=>!selection.some(selected=>normalizeMovie(selected).title===normalizeMovie(movie).title))].slice(0,5);
   for(let attempt=0;attempt<6&&combined.length>5&&selection.map(movie=>normalizeMovie(movie).title).join('|')===lastAssistantSignature;attempt++){
     selection=shuffledMovies(combined,assistantVariant+attempt+7).slice(0,5);
   }
   lastAssistantSignature=selection.map(movie=>normalizeMovie(movie).title).join('|');
+  recentAssistantTitles=[...selection.map(movie=>normalizeMovie(movie).title),...recentAssistantTitles].slice(0,25);
   return selection;
 };
 const getAssistantMoviePool=(candidates,answers,memory,{different=false}={})=>{
@@ -694,11 +701,15 @@ const updateMovieWall=async ({scroll=false,different=false}={})=>{
   lastAssistantFilterSignature=filterSignature;
   const selectedPlatform=normalizePlatform(answers.platform);
   assistantPanel.hidden=false; assistantPanel.classList.add('is-visible');
-  const local={...getAssistantMoviePool(assistantFallback,answers,memory,{different:true}),source:assistantFallback};
-  renderPosterWall(local.pool);
-  assistantReason.textContent=local.exactEnough?assistantExplanation(answers,local.pool.map(normalizeMovie)):closestAssistantExplanation(answers,local.pool.map(normalizeMovie));
-  console.log('Assistant filters changed:', answers);
-  console.log('New movie results:', local.pool);
+  if(!token||!assistantResults.children.length){
+    const local={...getAssistantMoviePool(assistantFallback,answers,memory,{different:true}),source:assistantFallback};
+    renderPosterWall(local.pool);
+    assistantReason.textContent=local.exactEnough?assistantExplanation(answers,local.pool.map(normalizeMovie)):closestAssistantExplanation(answers,local.pool.map(normalizeMovie));
+    console.log('Assistant filters changed:', answers);
+    console.log('New movie results:', local.pool);
+  }else{
+    assistantReason.textContent='Finding a fresh set of movie posters from the live catalogue…';
+  }
   try{
     let candidates;
     try{candidates=await fetchAssistantMovies(answers);}catch{candidates=assistantFallback;}
