@@ -429,6 +429,34 @@ const platformValues=movie=>{
   if(typeof value==='string')return value.split(/[,/|]+/).map(item=>item.trim()).filter(Boolean);
   return [];
 };
+const assistantPosterPaths={
+  'Arrival':'/x2FJsf1ElAgr63Y3PNPtJrcmpoe.jpg',
+  'Interstellar':'/yQvGrMoipbRoddT0ZR8tPoR7NfX.jpg',
+  'Her':'/eCOtqtfvn7mxGl6nfmq4b1exJRc.jpg',
+  'The Martian':'/fASz8A0yFE3QB6LgGoOfwvFSseV.jpg',
+  'Blade Runner 2049':'/gajva2L0rPYkEWjzgFlBXCAVBE5.jpg',
+  'Before Sunrise':'/kf1Jb1c2JAOqjuzA3H4oDM263uB.jpg',
+  'Whiplash':'/7fn624j5lj3xTme2SgiLCeuedmO.jpg',
+  'Mad Max: Fury Road':'/hA2ple9q4qnwxp3hKVNhroipsir.jpg',
+  'My Neighbor Totoro':'/rtGDOeG9LzoerkDGZF9dnVeLppL.jpg',
+  'Lost in Translation':'/3jCLmYDIIiSMPujbwygNpqdpM8N.jpg',
+  'Spider-Man: Into the Spider-Verse':'/iiZZdoQBEYBv6id8su7ImL0oCbD.jpg',
+  'Cinema Paradiso':'/gCI2AeMV4IHSewhJkzsur5MEp6R.jpg',
+  'The Pursuit of Happyness':'/lBYOKAMcxIvuk9s9hMuecB9dPBV.jpg',
+  'Rocky':'/aYtBYWqCdUqcnoodWJdcTG3pFev.jpg',
+  'La La Land':'/uDO8zWDhfWwoFdKS4fzkUJt0Rf0.jpg',
+  'About Time':'/ls6zswrOZVhCXQBh96DlbnLBajM.jpg',
+  'Ex Machina':'/dmJW8IAKHKxFNiUnoDR7JfsK7Rp.jpg',
+  'The Social Network':'/n0ybibhJtQ5icDqTp8eRytcIHJx.jpg',
+  'The Dark Knight':'/qJ2tW6WMUDux911r6m7haRef0WH.jpg',
+  'Inside Out':'/2H1TmgdfNtsKlU9jKdeNyYL5y8T.jpg',
+  'Everything Everywhere All at Once':'/u68AjlvlutfEIcpmbYpKcdi09ut.jpg',
+  'The Grand Budapest Hotel':'/eWdyYQreja6JGCzqHWXpWHDrrPo.jpg',
+  'Parasite':'/7IiTTgloJzvGI1TAYymCfbfl3vT.jpg',
+  'Your Name':'/q719jXXEzOoYaps6babgKnONONX.jpg',
+  'The Apartment':'/hhSRt1KKfRT0yEhEtRW3qp31JFU.jpg'
+};
+const assistantPosterImage=title=>assistantPosterPaths[title]?`${imageBase}${assistantPosterPaths[title]}`:assistantPosterFallback(title);
 const assistantFallback=[
   {title:'Arrival',year:'2016',runtime:116,rating:7.9,genreIds:[878,18],platforms:['Prime Video','Netflix','My own watchlist'],moods:['thoughtful','curious','inspired','moved'],age:'modern',overview:'A linguist works with the military to communicate with mysterious visitors, changing how she understands time and loss.',genre:'Sci-fi · Drama'},
   {title:'Interstellar',year:'2014',runtime:169,rating:8.7,genreIds:[878,18],platforms:['Amazon Prime Video','Cinema','My own watchlist'],moods:['inspired','thoughtful','moved'],age:'modern',overview:'A group of explorers travel through a wormhole to find humanity a future beyond Earth.',genre:'Sci-fi · Drama'},
@@ -454,7 +482,7 @@ const assistantFallback=[
   {title:'The Grand Budapest Hotel',year:'2014',runtime:100,rating:8.1,genreIds:[35,18],platforms:['Disney+','Amazon Prime Video'],moods:['happy','nostalgic','relaxed'],age:'modern',overview:'A precise, playful hotel adventure wrapped in memory, style, and melancholy.',genre:'Comedy · Drama'},
   {title:'Parasite',year:'2019',runtime:132,rating:8.5,genreIds:[18,53,35],platforms:['Prime Video','Cinema'],moods:['thoughtful','stressed','excited'],age:'new',overview:'A tense social satire where class, space, and survival collide with unforgettable precision.',genre:'Thriller · Drama'},
   {title:'Your Name',year:'2016',runtime:106,rating:8.4,genreIds:[16,10749,18],platforms:['Netflix','Amazon Prime Video'],moods:['romantic','nostalgic','moved','curious'],age:'modern',overview:'Two teenagers mysteriously connected across distance and time search for each other.',genre:'Animation · Romance'}
-].map(movie=>({...movie,release_date:`${movie.year}-01-01`,poster:posterFallback(movie.title),trailerQuery:`${movie.title} official trailer`}));
+].map(movie=>({...movie,release_date:`${movie.year}-01-01`,poster:assistantPosterImage(movie.title),trailerQuery:`${movie.title} official trailer`}));
 
 const defaultAssistantMemory=()=>({ratings:{},saved:[],watched:[]});
 const getAssistantMemory=()=>{
@@ -577,7 +605,7 @@ const openMovieDetails=movie=>{
 const createAssistantCard=rawMovie=>{
   const movie=normalizeMovie(rawMovie);
   const poster=document.createElement('button'); poster.type='button'; poster.className='wall-poster'; poster.setAttribute('aria-label',`View details for ${movie.title}`);
-  const image=document.createElement('img'); image.src=assistantPosterFallback(movie.title); image.alt=`Poster for ${movie.title}`; image.loading='eager'; image.decoding='async';
+  const image=document.createElement('img'); image.src=movie.poster||assistantPosterImage(movie.title); image.alt=`Poster for ${movie.title}`; image.loading='eager'; image.decoding='async'; image.addEventListener('error',()=>{image.src=assistantPosterFallback(movie.title)},{once:true});
   const overlay=document.createElement('span'); overlay.className='wall-poster-overlay'; overlay.innerHTML=`<strong>${movie.title}</strong><small>View Details</small>`;
   poster.append(image,overlay); poster.addEventListener('click',()=>openMovieDetails(movie));
   return poster;
