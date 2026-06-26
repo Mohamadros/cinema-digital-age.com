@@ -232,6 +232,19 @@ const assistantReason=document.querySelector('[data-decision-reason]');
 const assistantMemory=document.querySelector('[data-decision-memory]');
 const assistantStorageKey='cinemaDecisionMemory';
 const providerMap={netflix:'8',prime:'119',disney:'337'};
+const normalizeChoice=value=>String(value||'').trim().toLowerCase();
+const platformAliases={
+  any:['any',''],
+  netflix:['netflix'],
+  prime:['prime','prime video','amazon prime','amazon prime video'],
+  disney:['disney','disney+','disney plus'],
+  cinema:['cinema','big screen','theater','theatre'],
+  library:['library','my own watchlist','watchlist']
+};
+const normalizePlatform=value=>{
+  const normalized=normalizeChoice(value);
+  return Object.entries(platformAliases).find(([,aliases])=>aliases.includes(normalized))?.[0]||normalized;
+};
 const assistantFallback=[
   {title:'Arrival',year:'2016',runtime:116,rating:7.9,genreIds:[878,18],platforms:['netflix','prime','library'],moods:['thoughtful','curious','inspired','moved'],age:'modern',overview:'A linguist works with the military to communicate with mysterious visitors, changing how she understands time and loss.',genre:'Sci-fi · Drama'},
   {title:'Interstellar',year:'2014',runtime:169,rating:8.7,genreIds:[878,18],platforms:['prime','cinema','library'],moods:['inspired','thoughtful','moved'],age:'modern',overview:'A group of explorers travel through a wormhole to find humanity a future beyond Earth.',genre:'Sci-fi · Drama'},
@@ -266,7 +279,11 @@ const updateAssistantMemory=()=>{
   assistantMemory.textContent=`Memory active: ${ratings.length} rated, ${saved} saved, ${watched} watched${favorite?`. You rated “${favorite}” highly, so similar choices get a small boost.`:'.'}`;
 };
 const assistantValues=form=>Object.fromEntries(new FormData(form).entries());
-const movieMatchesPlatform=(movie,platform)=>platform==='any'||(movie.platforms||[]).includes(platform);
+const movieMatchesPlatform=(movie,platform)=>{
+  const selected=normalizePlatform(platform);
+  if(selected==='any')return true;
+  return (movie.platforms||[]).map(normalizePlatform).includes(selected);
+};
 const movieMatchesAge=(movie,age)=>{
   const year=Number(movie.year||(movie.release_date||'').slice(0,4)||0);
   if(age==='new')return year>=2018;
@@ -288,7 +305,7 @@ const scoreAssistantMovie=(movie,answers,memory)=>{
   if(answers.genre==='any'||genreIds.includes(Number(answers.genre)))score+=3;
   if(movieMatchesTime(movie,answers.time))score+=1.4;
   if(movieMatchesAge(movie,answers.age))score+=1.2;
-  if(movieMatchesPlatform(movie,answers.platform))score+=1;
+  if(movieMatchesPlatform(movie,answers.platform))score+=2;
   if((movie.moods||[]).includes(answers.currentMood))score+=.8;
   if((movie.moods||[]).includes(answers.targetMood))score+=2.2;
   const ratingBoost=Number(memory.ratings?.[movie.title]||0);
@@ -304,6 +321,10 @@ const assistantExplanation=(answers,movies)=>{
   const topRated=Object.entries(memory.ratings||{}).filter(([,score])=>Number(score)>=4).map(([title])=>title)[0];
   return `You have ${answers.time==='any'?'flexible time':answers.time.replace('medium','100–140 minutes').replace('short','under 100 minutes').replace('long','more than 140 minutes')}, you want to feel ${answers.targetMood}, and you chose ${genreLabel}. ${topRated?`Because you rated “${topRated}” highly, similar films receive extra weight. `:''}Best choices: ${titles}.`;
 };
+const closestAssistantExplanation=(answers,movies)=>{
+  const titles=movies.map(movie=>movie.title).join(', ');
+  return `Closest matches for your mood: ${titles}. Some filters were relaxed so the wall always stays useful.`;
+};
 const fetchAssistantMovies=async answers=>{
   if(!token)throw new Error('TMDB token not configured');
   const params={include_adult:'false',sort_by:'vote_average.desc','vote_count.gte':'700',page:'1'};
@@ -314,9 +335,14 @@ const fetchAssistantMovies=async answers=>{
   if(answers.age==='new')params['primary_release_date.gte']='2018-01-01';
   if(answers.age==='modern'){params['primary_release_date.gte']='2000-01-01';params['primary_release_date.lte']='2017-12-31';}
   if(answers.age==='old')params['primary_release_date.lte']='1999-12-31';
-  if(providerMap[answers.platform]){params.watch_region='DE';params.with_watch_providers=providerMap[answers.platform];}
+  const provider=providerMap[normalizePlatform(answers.platform)];
+  if(provider){params.watch_region='DE';params.with_watch_providers=provider;}
   const data=await tmdb('/discover/movie',params);
-  return data.results.map(normalizeMovie);
+  return data.results.map(movie=>{
+    const normalized=normalizeMovie(movie);
+    if(provider)normalized.platforms=[normalizePlatform(answers.platform)];
+    return normalized;
+  });
 };
 const openMovieDetails=movie=>{
   const normalized=normalizeMovie(movie);
@@ -346,29 +372,44 @@ const createAssistantCard=rawMovie=>{
   poster.append(image,overlay); poster.addEventListener('click',()=>openMovieDetails(movie));
   return poster;
 };
-assistantForm?.addEventListener('submit',async event=>{
-  event.preventDefault();
+let assistantRenderRequest=0;
+const renderAssistantRecommendations=async ({scroll=false}={})=>{
   if(!assistantPanel||!assistantResults||!assistantReason)return;
+  const requestId=++assistantRenderRequest;
   const answers=assistantValues(assistantForm); const memory=getAssistantMemory();
   assistantPanel.hidden=false; assistantPanel.classList.add('is-visible');
   assistantReason.textContent='Calculating the strongest three choices…'; assistantResults.replaceChildren();
   try{
     let candidates;
     try{candidates=await fetchAssistantMovies(answers);}catch{candidates=assistantFallback;}
+    if(requestId!==assistantRenderRequest)return;
+    if(!candidates.length)candidates=assistantFallback;
+    if(candidates.length<5){
+      const seen=new Set(candidates.map(movie=>normalizeMovie(movie).title));
+      candidates=[...candidates,...assistantFallback.filter(movie=>!seen.has(movie.title))];
+    }
     const filtered=candidates.filter(movie=>{
       const normalized=normalizeMovie(movie);
-      return (answers.genre==='any'||(normalized.genreIds||[]).includes(Number(answers.genre)))&&movieMatchesTime(movie,answers.time)&&movieMatchesAge(normalized,answers.age);
+      return (answers.genre==='any'||(normalized.genreIds||[]).includes(Number(answers.genre)))&&movieMatchesTime(movie,answers.time)&&movieMatchesAge(normalized,answers.age)&&movieMatchesPlatform(movie,answers.platform);
     });
-    const pool=(filtered.length>=5?filtered:candidates).map(movie=>({movie,score:scoreAssistantMovie(movie,answers,memory)})).sort((a,b)=>b.score-a.score).slice(0,5).map(item=>item.movie);
+    const exactEnough=filtered.length>=5;
+    const pool=(exactEnough?filtered:candidates).map(movie=>({movie,score:scoreAssistantMovie(movie,answers,memory)})).sort((a,b)=>b.score-a.score).slice(0,5).map(item=>item.movie);
     assistantResults.append(...pool.map(createAssistantCard));
-    assistantReason.textContent=assistantExplanation(answers,pool.map(normalizeMovie));
+    assistantReason.textContent=exactEnough?assistantExplanation(answers,pool.map(normalizeMovie)):closestAssistantExplanation(answers,pool.map(normalizeMovie));
   }catch(error){
+    if(requestId!==assistantRenderRequest)return;
     const pool=assistantFallback.slice(0,5);
     assistantResults.append(...pool.map(createAssistantCard));
-    assistantReason.textContent='The live assistant had a problem, so it loaded a reliable curated shortlist instead.';
+    assistantReason.textContent=closestAssistantExplanation(answers,pool.map(normalizeMovie));
   }
-  assistantPanel.scrollIntoView({behavior:'smooth',block:'start'});
+  if(scroll)assistantPanel.scrollIntoView({behavior:'smooth',block:'start'});
+};
+assistantForm?.addEventListener('submit',async event=>{
+  event.preventDefault();
+  renderAssistantRecommendations({scroll:true});
 });
+assistantForm?.querySelectorAll('select,input').forEach(input=>input.addEventListener('change',()=>renderAssistantRecommendations()));
+if(assistantForm)renderAssistantRecommendations();
 document.querySelector('[data-clear-decision-memory]')?.addEventListener('click',()=>{try{localStorage.removeItem(assistantStorageKey);}catch{}updateAssistantMemory();});
 updateAssistantMemory();
 
