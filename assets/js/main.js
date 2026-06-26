@@ -47,7 +47,9 @@ const tmdb = async (path, params = {}) => {
 };
 
 const posterFallback = title => {
-  return new URL('images/movie-poster-fallback.svg', new URL(siteRoot, location.origin)).toString();
+  const safeTitle=String(title||'Cinema Pick').replace(/[&<>]/g,letter=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[letter]));
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 600"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#5c0a0a"/><stop offset="1" stop-color="#0b0b0b"/></linearGradient></defs><rect width="400" height="600" fill="url(#g)"/><rect x="28" y="28" width="344" height="544" fill="none" stroke="#d4af37" stroke-width="6"/><circle cx="200" cy="150" r="54" fill="none" stroke="#d4af37" stroke-width="10"/><circle cx="200" cy="150" r="16" fill="#d4af37"/><text x="200" y="330" fill="#f5f5f5" font-family="Georgia,serif" font-size="38" text-anchor="middle" font-weight="700">${safeTitle}</text><text x="200" y="500" fill="#d4af37" font-family="Arial,sans-serif" font-size="18" text-anchor="middle" letter-spacing="4">CINEMA PICK</text></svg>`;
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 };
 
 const normalizeMovie = movie => ({
@@ -316,25 +318,33 @@ const fetchAssistantMovies=async answers=>{
   const data=await tmdb('/discover/movie',params);
   return data.results.map(normalizeMovie);
 };
+const openMovieDetails=movie=>{
+  const normalized=normalizeMovie(movie);
+  const content=trailerDialog.querySelector('[data-trailer-content]');
+  const message=trailerDialog.querySelector('[data-trailer-message]');
+  content.replaceChildren();
+  const detail=document.createElement('article');
+  detail.className='movie-detail-card';
+  const title=document.createElement('h3'); title.textContent=normalized.title;
+  const meta=document.createElement('p'); meta.className='movie-detail-meta'; meta.textContent=`${normalized.year} · ${normalized.genre||'Film'} · ${normalized.rating==='0.0'?'Not rated':`★ ${normalized.rating}`}`;
+  const overview=document.createElement('p'); overview.textContent=normalized.overview;
+  const actions=document.createElement('div'); actions.className='assistant-actions detail-actions';
+  const save=document.createElement('button'); save.type='button'; save.textContent='Save';
+  const watched=document.createElement('button'); watched.type='button'; watched.textContent='Watched';
+  const trailer=document.createElement('button'); trailer.type='button'; trailer.textContent='Trailer';
+  const sync=()=>{const memory=getAssistantMemory();save.classList.toggle('is-active',(memory.saved||[]).includes(normalized.title));watched.classList.toggle('is-active',(memory.watched||[]).includes(normalized.title));};
+  save.addEventListener('click',()=>{const next=getAssistantMemory();const set=new Set(next.saved||[]);set.has(normalized.title)?set.delete(normalized.title):set.add(normalized.title);next.saved=[...set];setAssistantMemory(next);sync();});
+  watched.addEventListener('click',()=>{const next=getAssistantMemory();const set=new Set(next.watched||[]);set.has(normalized.title)?set.delete(normalized.title):set.add(normalized.title);next.watched=[...set];setAssistantMemory(next);sync();});
+  trailer.addEventListener('click',()=>openTrailer(normalized));
+  actions.append(save,watched,trailer); detail.append(title,meta,overview,actions); content.append(detail); message.textContent=''; sync(); trailerDialog.showModal();
+};
 const createAssistantCard=rawMovie=>{
-  const movie=normalizeMovie(rawMovie); const memory=getAssistantMemory();
-  const card=document.createElement('article'); card.className='assistant-card';
-  const poster=document.createElement('div'); poster.className='movie-poster';
+  const movie=normalizeMovie(rawMovie);
+  const poster=document.createElement('button'); poster.type='button'; poster.className='wall-poster'; poster.setAttribute('aria-label',`View details for ${movie.title}`);
   const image=document.createElement('img'); image.src=movie.poster; image.alt=`Poster for ${movie.title}`; image.loading='lazy'; image.addEventListener('error',()=>{image.src=posterFallback(movie.title)},{once:true});
-  const rating=document.createElement('span'); rating.className='movie-rating'; rating.textContent=movie.rating==='0.0'?'Not rated':`★ ${movie.rating}`;
-  poster.append(image,rating);
-  const copy=document.createElement('div'); copy.className='assistant-copy';
-  const match=document.createElement('span'); match.className='assistant-match'; match.textContent=`${movie.year} · ${movie.genre||'Film'}`;
-  const title=document.createElement('h4'); title.textContent=movie.title;
-  const overview=document.createElement('p'); overview.textContent=movie.overview;
-  const starWrap=document.createElement('div'); starWrap.className='assistant-rating'; starWrap.setAttribute('aria-label',`Rate ${movie.title}`);
-  for(let i=1;i<=5;i++){const star=document.createElement('button');star.type='button';star.textContent='★';star.setAttribute('aria-label',`${i} out of 5`);star.classList.toggle('is-active',Number(memory.ratings?.[movie.title]||0)>=i);star.addEventListener('click',()=>{const next=getAssistantMemory();next.ratings={...(next.ratings||{}),[movie.title]:i};setAssistantMemory(next);starWrap.querySelectorAll('button').forEach((button,index)=>button.classList.toggle('is-active',index<i));});starWrap.append(star);}
-  const actions=document.createElement('div'); actions.className='assistant-actions';
-  const save=document.createElement('button'); save.type='button'; save.textContent='Save'; save.classList.toggle('is-active',(memory.saved||[]).includes(movie.title)); save.addEventListener('click',()=>{const next=getAssistantMemory();const set=new Set(next.saved||[]);set.has(movie.title)?set.delete(movie.title):set.add(movie.title);next.saved=[...set];setAssistantMemory(next);save.classList.toggle('is-active',set.has(movie.title));});
-  const watched=document.createElement('button'); watched.type='button'; watched.textContent='Watched'; watched.classList.toggle('is-active',(memory.watched||[]).includes(movie.title)); watched.addEventListener('click',()=>{const next=getAssistantMemory();const set=new Set(next.watched||[]);set.has(movie.title)?set.delete(movie.title):set.add(movie.title);next.watched=[...set];setAssistantMemory(next);watched.classList.toggle('is-active',set.has(movie.title));});
-  const trailer=document.createElement('button'); trailer.type='button'; trailer.textContent='Trailer'; trailer.addEventListener('click',()=>openTrailer(movie));
-  actions.append(save,watched,trailer);
-  copy.append(match,title,overview,starWrap,actions); card.append(poster,copy); return card;
+  const overlay=document.createElement('span'); overlay.className='wall-poster-overlay'; overlay.innerHTML=`<strong>${movie.title}</strong><small>View Details</small>`;
+  poster.append(image,overlay); poster.addEventListener('click',()=>openMovieDetails(movie));
+  return poster;
 };
 assistantForm?.addEventListener('submit',async event=>{
   event.preventDefault();
@@ -349,11 +359,11 @@ assistantForm?.addEventListener('submit',async event=>{
       const normalized=normalizeMovie(movie);
       return (answers.genre==='any'||(normalized.genreIds||[]).includes(Number(answers.genre)))&&movieMatchesTime(movie,answers.time)&&movieMatchesAge(normalized,answers.age);
     });
-    const pool=(filtered.length>=3?filtered:candidates).map(movie=>({movie,score:scoreAssistantMovie(movie,answers,memory)})).sort((a,b)=>b.score-a.score).slice(0,3).map(item=>item.movie);
+    const pool=(filtered.length>=5?filtered:candidates).map(movie=>({movie,score:scoreAssistantMovie(movie,answers,memory)})).sort((a,b)=>b.score-a.score).slice(0,5).map(item=>item.movie);
     assistantResults.append(...pool.map(createAssistantCard));
     assistantReason.textContent=assistantExplanation(answers,pool.map(normalizeMovie));
   }catch(error){
-    const pool=assistantFallback.slice(0,3);
+    const pool=assistantFallback.slice(0,5);
     assistantResults.append(...pool.map(createAssistantCard));
     assistantReason.textContent='The live assistant had a problem, so it loaded a reliable curated shortlist instead.';
   }
