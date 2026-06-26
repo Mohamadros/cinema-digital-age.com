@@ -34,7 +34,7 @@
         <div class="decision-question"><label for="movie-age">Do you want something new or old?</label><select id="movie-age" class="assistant-filter" name="age" data-assistant-filter><option value="any">No preference</option><option value="new">New / recent</option><option value="modern">Modern classic</option><option value="old">Older classic</option></select></div>
         <div class="decision-question"><label for="decision-genre">Which genre do you want?</label><select id="decision-genre" class="assistant-filter" name="genre" data-assistant-filter><option value="878">Sci-fi</option><option value="18">Drama</option><option value="35">Comedy</option><option value="28">Action</option><option value="10749">Romance</option><option value="53">Thriller</option><option value="16">Animation</option><option value="any">Surprise me</option></select></div>
         <div class="decision-question"><label for="platform">Which platform do you want?</label><select id="platform" class="assistant-filter" name="platform" data-assistant-filter><option value="any">Any platform</option><option value="netflix">Netflix</option><option value="prime">Prime Video</option><option value="disney">Disney+</option><option value="cinema">Cinema / big screen</option><option value="library">My own watchlist</option></select></div>
-        <button class="button decision-submit" type="submit"><span>Find my movie</span><span aria-hidden="true">🎬</span></button>
+        <button class="button decision-submit" type="submit"><span>Find my movie</span><span aria-hidden="true">›</span></button>
       </form>
       <aside class="decision-memory reveal" aria-label="Your movie memory">
         <span class="card-label">Your taste memory</span>
@@ -44,7 +44,7 @@
     </div>
     <div class="decision-results reveal" data-decision-results hidden>
       <div class="decision-why"><span class="kicker">Poster wall shortlist</span><h3 data-decision-title>Your cinema wall picks</h3><p data-decision-reason></p></div>
-      <div class="assistant-refresh-wrap"><button class="button assistant-refresh" type="button" data-assistant-refresh><span>Show me different movies</span><span aria-hidden="true">↻</span></button></div>
+      <div class="assistant-refresh-wrap"><button class="button assistant-refresh" type="button" data-assistant-refresh><span>Show me different movies</span><span aria-hidden="true">›</span></button></div>
       <div class="poster-wall-stage" aria-label="Recommended movies on the cinema poster wall">
         <img class="poster-wall-photo" src="{{ "images/decision-poster-wall.png" | relURL }}" alt="Cinema wall with a gold poster frame and red theater seats">
         <div class="poster-wall-frame">

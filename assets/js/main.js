@@ -51,6 +51,12 @@ const posterFallback = title => {
   const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 600"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#5c0a0a"/><stop offset="1" stop-color="#0b0b0b"/></linearGradient></defs><rect width="400" height="600" fill="url(#g)"/><rect x="28" y="28" width="344" height="544" fill="none" stroke="#d4af37" stroke-width="6"/><circle cx="200" cy="150" r="54" fill="none" stroke="#d4af37" stroke-width="10"/><circle cx="200" cy="150" r="16" fill="#d4af37"/><text x="200" y="330" fill="#f5f5f5" font-family="Georgia,serif" font-size="38" text-anchor="middle" font-weight="700">${safeTitle}</text><text x="200" y="500" fill="#d4af37" font-family="Arial,sans-serif" font-size="18" text-anchor="middle" letter-spacing="4">CINEMA PICK</text></svg>`;
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 };
+const assistantPosterFallback = title => {
+  const safeTitle=String(title||'Cinema Pick').replace(/[&<>]/g,letter=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[letter]));
+  const hue=[...safeTitle].reduce((total,letter)=>total+letter.charCodeAt(0),0)%360;
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 600"><defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="hsl(${hue},70%,22%)"/><stop offset=".54" stop-color="#5c0a0a"/><stop offset="1" stop-color="#080808"/></linearGradient><radialGradient id="spot" cx=".5" cy=".18" r=".7"><stop stop-color="#f6e2a0" stop-opacity=".9"/><stop offset=".35" stop-color="#d4af37" stop-opacity=".18"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient></defs><rect width="400" height="600" fill="url(#bg)"/><rect width="400" height="600" fill="url(#spot)"/><rect x="24" y="24" width="352" height="552" fill="none" stroke="#d4af37" stroke-width="7"/><rect x="48" y="62" width="304" height="270" fill="rgba(0,0,0,.2)" stroke="rgba(245,245,245,.28)" stroke-width="2"/><circle cx="200" cy="178" r="62" fill="none" stroke="#f5f5f5" stroke-opacity=".75" stroke-width="9"/><path d="M185 145l62 36-62 36z" fill="#d4af37"/><text x="200" y="405" fill="#f5f5f5" font-family="Georgia,serif" font-size="34" text-anchor="middle" font-weight="700">${safeTitle}</text><text x="200" y="522" fill="#d4af37" font-family="Arial,sans-serif" font-size="17" text-anchor="middle" letter-spacing="4">MOVIE PICK</text></svg>`;
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+};
 
 const normalizeMovie = movie => ({
   id: movie.id || null,
@@ -571,7 +577,7 @@ const openMovieDetails=movie=>{
 const createAssistantCard=rawMovie=>{
   const movie=normalizeMovie(rawMovie);
   const poster=document.createElement('button'); poster.type='button'; poster.className='wall-poster'; poster.setAttribute('aria-label',`View details for ${movie.title}`);
-  const image=document.createElement('img'); image.src=movie.poster; image.alt=`Poster for ${movie.title}`; image.loading='lazy'; image.addEventListener('error',()=>{image.src=posterFallback(movie.title)},{once:true});
+  const image=document.createElement('img'); image.src=assistantPosterFallback(movie.title); image.alt=`Poster for ${movie.title}`; image.loading='eager'; image.decoding='async';
   const overlay=document.createElement('span'); overlay.className='wall-poster-overlay'; overlay.innerHTML=`<strong>${movie.title}</strong><small>View Details</small>`;
   poster.append(image,overlay); poster.addEventListener('click',()=>openMovieDetails(movie));
   return poster;
