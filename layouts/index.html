@@ -1,0 +1,111 @@
+{{ define "main" }}
+{{ $mood := site.GetPage "/mood-finder" }}
+{{ $coming := site.GetPage "/coming-soon" }}
+{{ $journal := site.GetPage "/journal" }}
+{{ $interviews := site.GetPage "/interviews" }}
+{{ $community := site.GetPage "/community" }}
+{{ $about := site.GetPage "/about" }}
+
+<section id="home" class="hero" aria-labelledby="hero-title" style="--hero-image:url('{{ .Params.hero_image }}')">
+  <div class="hero-shade"></div>
+  <div class="hero-content">
+    <p class="hero-eyebrow">{{ .Params.eyebrow }}</p>
+    <h1 id="hero-title">Cinema <em>in the</em><br>Digital Age</h1>
+    <p class="hero-subtitle">{{ .Description }}</p>
+    <a class="button" href="{{ .Params.cta_url }}"><span>{{ .Params.cta_label }}</span><span aria-hidden="true">▶</span></a>
+  </div>
+  <div class="hero-reel" aria-hidden="true"><span>Emotion</span><i></i><span>Discovery</span><i></i><span>Culture</span></div>
+  <div class="scroll-cue" aria-hidden="true"><span>Now showing</span><i></i></div>
+</section>
+
+<section class="cinema-intro" aria-label="Exhibition introduction">
+  <div class="intro-copy reveal">{{ .Content }}</div>
+  <div class="marquee" aria-hidden="true"><div>Cinema remembers us · Cinema moves us · Cinema connects us ·&nbsp;</div><div>Cinema remembers us · Cinema moves us · Cinema connects us ·&nbsp;</div></div>
+</section>
+
+<section id="mood-finder" class="section mood-section">
+  <div class="section-shell">
+    {{ partial "section-heading.html" $mood }}
+    <div class="mood-grid" role="list" aria-label="Choose your current mood">
+      {{ $moods := slice (dict "key" "happy" "emoji" "😊" "label" "Happy") (dict "key" "sad" "emoji" "😢" "label" "Sad") (dict "key" "lonely" "emoji" "🌧️" "label" "Lonely") (dict "key" "romantic" "emoji" "❤️" "label" "Romantic") (dict "key" "motivated" "emoji" "🚀" "label" "Motivated") (dict "key" "stressed" "emoji" "😵" "label" "Stressed") (dict "key" "thoughtful" "emoji" "🤔" "label" "Thoughtful") (dict "key" "excited" "emoji" "😱" "label" "Excited") (dict "key" "nostalgic" "emoji" "🌙" "label" "Nostalgic") }}
+      {{ range $moods }}<button class="mood-card reveal" type="button" data-mood="{{ .key }}" aria-pressed="false"><span>{{ .emoji }}</span><strong>{{ .label }}</strong><small>Find my film</small></button>{{ end }}
+    </div>
+    <div class="recommendation-panel" data-recommendation-panel hidden>
+      <div class="recommendation-why"><span class="kicker">Why this recommendation?</span><h3 data-mood-title></h3><p data-mood-reason></p></div>
+      <div class="movie-status" data-mood-status role="status"></div>
+      <div class="movie-grid" data-mood-results></div>
+      <form class="mood-feedback" name="mood-feedback" method="POST" data-netlify="true" data-feedback-form>
+        <input type="hidden" name="form-name" value="mood-feedback"><input type="hidden" name="mood"><input type="hidden" name="score">
+        <div><strong>Did this recommendation match your mood?</strong><span>Your response helps improve future suggestions.</span></div>
+        <fieldset><legend class="sr-only">Rate this recommendation</legend>{{ range seq 1 5 }}<button type="button" data-score="{{ . }}" aria-label="{{ . }} out of 5 stars">★</button>{{ end }}</fieldset>
+        <p data-feedback-message aria-live="polite"></p>
+      </form>
+    </div>
+  </div>
+</section>
+
+<section id="coming-soon" class="section coming-section" style="--section-image:url('/images/cinema-screen.png')">
+  <div class="section-shell">
+    {{ partial "section-heading.html" $coming }}
+    <div class="movie-toolbar reveal">
+      <label><span>Search movies</span><input type="search" data-movie-search placeholder="Search by title…" autocomplete="off"></label>
+      <label><span>Filter by genre</span><select data-genre-filter><option value="">All genres</option></select></label>
+    </div>
+    <aside class="api-notice" data-api-notice hidden><strong>Demo catalogue active</strong><span>Add your TMDB Read Access Token in <code>hugo.toml</code> to load the full future-release catalogue and official movie posters.</span></aside>
+    <div class="movie-status" data-coming-status role="status">Preparing the next attractions…</div>
+    <div class="movie-grid movie-grid-large" data-coming-results></div>
+    <div class="load-more-wrap"><button class="button load-more" type="button" data-load-more hidden><span>Load more releases</span><span aria-hidden="true">＋</span></button></div>
+  </div>
+</section>
+
+<section id="journal" class="section journal-section">
+  <div class="section-shell">
+    {{ partial "section-heading.html" $journal }}
+    <div class="journal-tools reveal">
+      <div class="filter-pills" role="group" aria-label="Filter journal by category"><button class="is-active" data-journal-filter="all" type="button">All entries</button>{{ range site.Taxonomies.categories }}<button data-journal-filter="{{ .Page.Title | urlize }}" type="button">{{ .Page.Title }}</button>{{ end }}</div>
+      <label class="journal-search"><span class="sr-only">Search the movie journal</span><input type="search" data-journal-search placeholder="Search journal…"><span aria-hidden="true">⌕</span></label>
+    </div>
+    <div class="ticket-wall" data-journal-grid>
+      {{ range $journal.RegularPages.ByDate.Reverse }}{{ partial "journal-ticket.html" . }}{{ end }}
+    </div>
+    <p class="empty-state" data-journal-empty hidden>No journal entries match that search.</p>
+  </div>
+</section>
+
+<section id="interviews" class="section interview-section" style="--section-image:url('{{ $interviews.Params.background }}')">
+  <div class="section-shell">
+    {{ partial "section-heading.html" $interviews }}
+    <div class="stats-grid">
+      {{ range $interviews.Params.stats }}<article class="stat-card reveal"><strong>{{ .value }}<span>%</span></strong><p>{{ .label }}</p><div class="stat-track"><i style="--value:{{ .value }}%"></i></div></article>{{ end }}
+    </div>
+    <div class="quote-grid">
+      {{ range $interviews.Params.quotes }}<figure class="quote-card reveal"><span class="quote-mark" aria-hidden="true">“</span><blockquote>{{ .quote }}</blockquote><figcaption><small>{{ .question }}</small><span>{{ .person }}</span></figcaption></figure>{{ end }}
+    </div>
+    <aside class="research-note reveal">{{ $interviews.Content }}</aside>
+  </div>
+</section>
+
+<section id="community" class="section community-section">
+  <div class="section-shell">
+    {{ partial "section-heading.html" $community }}
+    <div class="community-layout">
+      <form class="memory-form reveal" name="community-reviews" method="POST" data-netlify="true" netlify-honeypot="bot-field" data-community-form>
+        <input type="hidden" name="form-name" value="community-reviews"><p class="honeypot"><label>Do not fill this out: <input name="bot-field"></label></p>
+        <div class="form-grid"><label>Name<input name="name" required placeholder="Your name"></label><label>Movie title<input name="movie" required placeholder="The film you watched"></label><label>Cinema name<input name="cinema" placeholder="Where did you see it?"></label><label>Rating<select name="rating" required><option value="">Choose rating</option><option>5 — Exceptional</option><option>4 — Great</option><option>3 — Good</option><option>2 — Fair</option><option>1 — Disappointing</option></select></label><label>Feeling before<input name="feeling-before" placeholder="e.g. Stressed"></label><label>Feeling after<input name="feeling-after" placeholder="e.g. Inspired"></label><label>Recommend?<select name="recommend" required><option value="">Choose one</option><option>Yes</option><option>No</option><option>Maybe</option></select></label><label class="form-wide">Your cinema experience<textarea name="experience" required rows="5" placeholder="What stayed with you after the credits?"></textarea></label></div>
+        <button class="button" type="submit"><span>Pin memory to the wall</span><span aria-hidden="true">＋</span></button><p class="form-message" data-community-message aria-live="polite"></p>
+      </form>
+      <div class="memory-wall" aria-label="Recent community memories">
+        <article class="memory-card reveal"><span class="memory-rating">★★★★★</span><h3>Interstellar</h3><p>“The organ score and the scale of space made everything outside the auditorium disappear.”</p><dl><div><dt>Before</dt><dd>Stressed</dd></div><div><dt>After</dt><dd>Inspired</dd></div></dl><small>Lea · Kino International</small></article>
+        <article class="memory-card reveal"><span class="memory-rating">★★★★☆</span><h3>Perfect Days</h3><p>“I left noticing the city differently—quieter, slower, and with more attention.”</p><dl><div><dt>Before</dt><dd>Restless</dd></div><div><dt>After</dt><dd>Calm</dd></div></dl><small>Sam · Filmtheater am Friedrichshain</small></article>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="about" class="section about-section" style="--section-image:url('/images/cinema-stairway.png')">
+  <div class="section-shell about-grid"><div>{{ partial "section-heading.html" $about }}</div><div class="about-content reveal">{{ $about.Content }}</div><aside class="author-card reveal"><div class="author-monogram" aria-hidden="true">YN</div><div><span class="card-label">Created by</span><h3>{{ $about.Params.author }}</h3><p>{{ $about.Params.role }}</p><small>{{ $about.Params.university }} · {{ $about.Params.year }}</small></div></aside></div>
+</section>
+
+<template id="movie-card-template"><article class="movie-card"><div class="movie-poster"><img src="" alt="" loading="lazy"><span class="movie-rating"></span></div><div class="movie-copy"><div class="movie-meta"><span class="movie-year"></span><span class="movie-genre"></span></div><h3></h3><p></p><button type="button" class="trailer-button"><span aria-hidden="true">▶</span> Watch trailer</button></div></article></template>
+<dialog class="trailer-dialog" data-trailer-dialog aria-label="Movie trailer"><button type="button" data-trailer-close aria-label="Close trailer">×</button><div data-trailer-content></div><p data-trailer-message></p></dialog>
+{{ end }}
