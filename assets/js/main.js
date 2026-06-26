@@ -665,26 +665,37 @@ const selectAssistantMovies=(exactRanked,closeRanked,{different=false}={})=>{
   recentAssistantTitles=[...selection.map(movie=>normalizeMovie(movie).title),...recentAssistantTitles].slice(0,25);
   return selection;
 };
+const uniqueAssistantMovies=movies=>{
+  const seen=new Set();
+  return movies.filter(movie=>{
+    const title=normalizeMovie(movie).title;
+    if(seen.has(title))return false;
+    seen.add(title);
+    return true;
+  });
+};
 const getAssistantMoviePool=(candidates,answers,memory,{different=false}={})=>{
   const source=candidates.length?candidates:assistantFallback;
-  const exact=source.filter(movie=>{
+  const matchesCore=movie=>{
     const normalized=normalizeMovie(movie);
     return (answers.genre==='any'||(normalized.genreIds||[]).includes(Number(answers.genre)))&&
       movieMatchesTime(movie,answers.time)&&
       movieMatchesAge(normalized,answers.age)&&
-      movieMatchesPlatform(movie,answers.platform)&&
-      movieMatchesMood(movie,answers);
-  });
-  const exactTitles=new Set(exact.map(movie=>normalizeMovie(movie).title));
-  const exactRanked=exact
+      movieMatchesPlatform(movie,answers.platform);
+  };
+  const matchesStrictBase=movie=>{
+    const normalized=normalizeMovie(movie);
+    return movieMatchesAge(normalized,answers.age)&&movieMatchesPlatform(movie,answers.platform);
+  };
+  const exact=source.filter(movie=>matchesCore(movie)&&movieMatchesMood(movie,answers));
+  const coreRelaxed=source.filter(movie=>matchesCore(movie)&&!movieMatchesMood(movie,answers));
+  const strictRelaxed=source.filter(movie=>matchesStrictBase(movie)&&!matchesCore(movie));
+  const rank=movies=>movies
     .map(movie=>({movie,score:scoreAssistantMovie(movie,answers,memory)}))
     .sort((a,b)=>b.score-a.score)
     .map(item=>item.movie);
-  const closeRanked=source
-    .filter(movie=>!exactTitles.has(normalizeMovie(movie).title))
-    .map(movie=>({movie,score:scoreAssistantMovie(movie,answers,memory)}))
-    .sort((a,b)=>b.score-a.score)
-    .map(item=>item.movie);
+  const exactRanked=rank(exact);
+  const closeRanked=uniqueAssistantMovies([...rank(coreRelaxed),...rank(strictRelaxed)]);
   return {pool:selectAssistantMovies(exactRanked,closeRanked,{different}),exactEnough:exactRanked.length>=5};
 };
 const renderPosterWall=movies=>{
@@ -715,12 +726,16 @@ const updateMovieWall=async ({scroll=false,different=false}={})=>{
     try{candidates=await fetchAssistantMovies(answers);}catch{candidates=assistantFallback;}
     if(requestId!==assistantRenderRequest)return;
     if(!candidates.length)candidates=assistantFallback;
+    const fallbackForCurrentFilters=assistantFallback.filter(movie=>{
+      const normalized=normalizeMovie(movie);
+      return movieMatchesAge(normalized,answers.age)&&movieMatchesPlatform(movie,answers.platform);
+    });
     if(candidates.length<5){
       const seen=new Set(candidates.map(movie=>normalizeMovie(movie).title));
-      candidates=[...candidates,...assistantFallback.filter(movie=>!seen.has(movie.title))];
+      candidates=[...candidates,...fallbackForCurrentFilters.filter(movie=>!seen.has(movie.title))];
     }
     const candidateTitles=new Set(candidates.map(movie=>normalizeMovie(movie).title));
-    candidates=[...candidates,...assistantFallback.filter(movie=>!candidateTitles.has(movie.title))];
+    candidates=[...candidates,...fallbackForCurrentFilters.filter(movie=>!candidateTitles.has(movie.title))];
     console.log('Selected platform:', answers.platform, 'Normalized:', selectedPlatform);
     console.log('Movies with Prime:', candidates.filter(movie=>platformValues(movie).some(platform=>normalizePlatform(platform).includes('prime'))));
     const {pool,exactEnough}=getAssistantMoviePool(candidates,answers,memory,{different});
@@ -730,7 +745,11 @@ const updateMovieWall=async ({scroll=false,different=false}={})=>{
     assistantReason.textContent=exactEnough?assistantExplanation(answers,pool.map(normalizeMovie)):closestAssistantExplanation(answers,pool.map(normalizeMovie));
   }catch(error){
     if(requestId!==assistantRenderRequest)return;
-    const pool=selectAssistantMovies([],assistantFallback,{different:true});
+    const fallbackForCurrentFilters=assistantFallback.filter(movie=>{
+      const normalized=normalizeMovie(movie);
+      return movieMatchesAge(normalized,answers.age)&&movieMatchesPlatform(movie,answers.platform);
+    });
+    const pool=selectAssistantMovies([],fallbackForCurrentFilters.length?fallbackForCurrentFilters:assistantFallback,{different:true});
     console.log('Assistant filters changed:', answers);
     console.log('New movie results:', pool);
     renderPosterWall(pool);
@@ -742,6 +761,12 @@ const renderAssistantRecommendations=updateMovieWall;
 assistantForm?.addEventListener('submit',async event=>{
   event.preventDefault();
   updateMovieWall({scroll:true,different:true});
+});
+assistantForm?.addEventListener('change',event=>{
+  if(event.target.matches('select,input,[data-assistant-filter]'))updateMovieWall({different:true});
+});
+assistantForm?.addEventListener('input',event=>{
+  if(event.target.matches('select,input,[data-assistant-filter]'))updateMovieWall({different:true});
 });
 const assistantInputs=document.querySelectorAll('[data-assistant-filter], .assistant-filter, #current-mood, #target-mood, #decision-genre, #platform, #watch-time');
 assistantInputs.forEach(input=>{
