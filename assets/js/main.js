@@ -113,6 +113,7 @@ Object.keys(moodFallback).forEach(key => { moodFallback[key] = moodFallback[key]
 
 const moodPanel = document.querySelector('[data-recommendation-panel]');
 document.querySelectorAll('[data-mood]').forEach(button => button.addEventListener('click', async () => {
+  if (!moodPanel) return;
   const key = button.dataset.mood; const config = moodConfig[key];
   document.querySelectorAll('[data-mood]').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
   moodPanel.hidden = false;
@@ -244,8 +245,15 @@ const assistantFallback=[
   {title:'Cinema Paradiso',year:'1988',runtime:124,rating:8.5,genreIds:[18],platforms:['library'],moods:['nostalgic','moved','romantic'],age:'old',overview:'A filmmaker remembers the theater, mentor, and childhood that shaped his love of cinema.',genre:'Drama'}
 ].map(movie=>({...movie,release_date:`${movie.year}-01-01`,poster:posterFallback(movie.title),trailerQuery:`${movie.title} official trailer`}));
 
-const getAssistantMemory=()=>JSON.parse(localStorage.getItem(assistantStorageKey)||'{"ratings":{},"saved":[],"watched":[]}');
-const setAssistantMemory=memory=>{localStorage.setItem(assistantStorageKey,JSON.stringify(memory));updateAssistantMemory();};
+const defaultAssistantMemory=()=>({ratings:{},saved:[],watched:[]});
+const getAssistantMemory=()=>{
+  try{return JSON.parse(localStorage.getItem(assistantStorageKey)||'{"ratings":{},"saved":[],"watched":[]}');}
+  catch{return defaultAssistantMemory();}
+};
+const setAssistantMemory=memory=>{
+  try{localStorage.setItem(assistantStorageKey,JSON.stringify(memory));}catch{}
+  updateAssistantMemory();
+};
 const updateAssistantMemory=()=>{
   if(!assistantMemory)return;
   const memory=getAssistantMemory();
@@ -330,20 +338,28 @@ const createAssistantCard=rawMovie=>{
 };
 assistantForm?.addEventListener('submit',async event=>{
   event.preventDefault();
+  if(!assistantPanel||!assistantResults||!assistantReason)return;
   const answers=assistantValues(assistantForm); const memory=getAssistantMemory();
-  assistantPanel.hidden=false; assistantReason.textContent='Calculating the strongest three choices…'; assistantResults.replaceChildren();
-  let candidates;
-  try{candidates=await fetchAssistantMovies(answers);}catch{candidates=assistantFallback;}
-  const filtered=candidates.filter(movie=>{
-    const normalized=normalizeMovie(movie);
-    return (answers.genre==='any'||(normalized.genreIds||[]).includes(Number(answers.genre)))&&movieMatchesTime(movie,answers.time)&&movieMatchesAge(normalized,answers.age);
-  });
-  const pool=(filtered.length>=3?filtered:candidates).map(movie=>({movie,score:scoreAssistantMovie(movie,answers,memory)})).sort((a,b)=>b.score-a.score).slice(0,3).map(item=>item.movie);
-  assistantResults.append(...pool.map(createAssistantCard));
-  assistantReason.textContent=assistantExplanation(answers,pool.map(normalizeMovie));
+  assistantPanel.hidden=false; assistantPanel.classList.add('is-visible');
+  assistantReason.textContent='Calculating the strongest three choices…'; assistantResults.replaceChildren();
+  try{
+    let candidates;
+    try{candidates=await fetchAssistantMovies(answers);}catch{candidates=assistantFallback;}
+    const filtered=candidates.filter(movie=>{
+      const normalized=normalizeMovie(movie);
+      return (answers.genre==='any'||(normalized.genreIds||[]).includes(Number(answers.genre)))&&movieMatchesTime(movie,answers.time)&&movieMatchesAge(normalized,answers.age);
+    });
+    const pool=(filtered.length>=3?filtered:candidates).map(movie=>({movie,score:scoreAssistantMovie(movie,answers,memory)})).sort((a,b)=>b.score-a.score).slice(0,3).map(item=>item.movie);
+    assistantResults.append(...pool.map(createAssistantCard));
+    assistantReason.textContent=assistantExplanation(answers,pool.map(normalizeMovie));
+  }catch(error){
+    const pool=assistantFallback.slice(0,3);
+    assistantResults.append(...pool.map(createAssistantCard));
+    assistantReason.textContent='The live assistant had a problem, so it loaded a reliable curated shortlist instead.';
+  }
   assistantPanel.scrollIntoView({behavior:'smooth',block:'start'});
 });
-document.querySelector('[data-clear-decision-memory]')?.addEventListener('click',()=>{localStorage.removeItem(assistantStorageKey);updateAssistantMemory();});
+document.querySelector('[data-clear-decision-memory]')?.addEventListener('click',()=>{try{localStorage.removeItem(assistantStorageKey);}catch{}updateAssistantMemory();});
 updateAssistantMemory();
 
 const communityForm=document.querySelector('[data-community-form]');
