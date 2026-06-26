@@ -230,6 +230,7 @@ const assistantResults=document.querySelector('[data-assistant-results]');
 const assistantPanel=document.querySelector('[data-decision-results]');
 const assistantReason=document.querySelector('[data-decision-reason]');
 const assistantMemory=document.querySelector('[data-decision-memory]');
+const assistantRefreshButton=document.querySelector('[data-assistant-refresh]');
 const assistantStorageKey='cinemaDecisionMemory';
 const providerMap={netflix:'8',prime:'119',disney:'337'};
 function normalizePlatform(value){
@@ -266,7 +267,19 @@ const assistantFallback=[
   {title:'My Neighbor Totoro',year:'1988',runtime:86,rating:8.1,genreIds:[16,10751],platforms:['netflix','library'],moods:['relaxed','happy','nostalgic'],age:'old',overview:'Two sisters discover gentle forest spirits while adapting to a new home.',genre:'Animation · Family'},
   {title:'Lost in Translation',year:'2003',runtime:102,rating:7.7,genreIds:[18,10749],platforms:['Amazon Prime','My own watchlist'],moods:['lonely','moved','relaxed'],age:'modern',overview:'Two strangers in Tokyo form a quiet connection during a moment of uncertainty.',genre:'Drama · Romance'},
   {title:'Spider-Man: Into the Spider-Verse',year:'2018',runtime:117,rating:8.4,genreIds:[16,28,12],platforms:['Netflix','Prime Video','My own watchlist'],moods:['happy','energized','inspired'],age:'new',overview:'Miles Morales discovers courage and identity across a visually explosive multiverse.',genre:'Animation · Action'},
-  {title:'Cinema Paradiso',year:'1988',runtime:124,rating:8.5,genreIds:[18],platforms:['library'],moods:['nostalgic','moved','romantic'],age:'old',overview:'A filmmaker remembers the theater, mentor, and childhood that shaped his love of cinema.',genre:'Drama'}
+  {title:'Cinema Paradiso',year:'1988',runtime:124,rating:8.5,genreIds:[18],platforms:['library'],moods:['nostalgic','moved','romantic'],age:'old',overview:'A filmmaker remembers the theater, mentor, and childhood that shaped his love of cinema.',genre:'Drama'},
+  {title:'The Pursuit of Happyness',year:'2006',runtime:117,rating:8.0,genreIds:[18],platforms:['Netflix','Amazon Prime Video'],moods:['stressed','inspired','moved'],age:'modern',overview:'A struggling father turns pressure and uncertainty into persistence, hope, and discipline.',genre:'Drama'},
+  {title:'Rocky',year:'1976',runtime:120,rating:8.1,genreIds:[18],platforms:['Prime Video','Cinema'],moods:['motivated','energized','inspired'],age:'old',overview:'An underdog boxer gets one chance to prove what effort and heart can become.',genre:'Drama'},
+  {title:'La La Land',year:'2016',runtime:128,rating:8.0,genreIds:[10749,18,35],platforms:['Netflix','Prime Video'],moods:['romantic','happy','moved','nostalgic'],age:'modern',overview:'Two artists chase love and ambition through music, color, and bittersweet choices.',genre:'Romance · Drama'},
+  {title:'About Time',year:'2013',runtime:123,rating:7.8,genreIds:[10749,35,18],platforms:['Amazon Prime Video','Netflix'],moods:['romantic','relaxed','happy','moved'],age:'modern',overview:'A time-travel romance about family, ordinary days, and choosing presence.',genre:'Romance · Comedy'},
+  {title:'Ex Machina',year:'2015',runtime:108,rating:7.7,genreIds:[878,18,53],platforms:['Prime Video','My own watchlist'],moods:['thoughtful','curious','stressed'],age:'modern',overview:'A programmer tests an artificial intelligence and begins questioning control, desire, and consciousness.',genre:'Sci-fi · Thriller'},
+  {title:'The Social Network',year:'2010',runtime:121,rating:7.7,genreIds:[18],platforms:['Netflix','Amazon Prime'],moods:['motivated','thoughtful','energized'],age:'modern',overview:'A sharp digital-age story about ambition, friendship, authorship, and power.',genre:'Drama'},
+  {title:'The Dark Knight',year:'2008',runtime:152,rating:9.0,genreIds:[28,18,53],platforms:['Prime Video','Cinema'],moods:['excited','stressed','thoughtful'],age:'modern',overview:'A city, a hero, and a villain collide in a tense study of chaos and choice.',genre:'Action · Thriller'},
+  {title:'Inside Out',year:'2015',runtime:95,rating:8.1,genreIds:[16,35,18],platforms:['Disney+','Prime Video'],moods:['sad','happy','moved','thoughtful'],age:'modern',overview:'Emotions become characters in a playful story about growing up and accepting sadness.',genre:'Animation · Comedy'},
+  {title:'Everything Everywhere All at Once',year:'2022',runtime:140,rating:7.8,genreIds:[878,28,35],platforms:['Prime Video','Cinema'],moods:['excited','thoughtful','moved','energized'],age:'new',overview:'A multiverse adventure turns family conflict into wild, emotional, inventive cinema.',genre:'Sci-fi · Action'},
+  {title:'The Grand Budapest Hotel',year:'2014',runtime:100,rating:8.1,genreIds:[35,18],platforms:['Disney+','Amazon Prime Video'],moods:['happy','nostalgic','relaxed'],age:'modern',overview:'A precise, playful hotel adventure wrapped in memory, style, and melancholy.',genre:'Comedy · Drama'},
+  {title:'Parasite',year:'2019',runtime:132,rating:8.5,genreIds:[18,53,35],platforms:['Prime Video','Cinema'],moods:['thoughtful','stressed','excited'],age:'new',overview:'A tense social satire where class, space, and survival collide with unforgettable precision.',genre:'Thriller · Drama'},
+  {title:'Your Name',year:'2016',runtime:106,rating:8.4,genreIds:[16,10749,18],platforms:['Netflix','Amazon Prime Video'],moods:['romantic','nostalgic','moved','curious'],age:'modern',overview:'Two teenagers mysteriously connected across distance and time search for each other.',genre:'Animation · Romance'}
 ].map(movie=>({...movie,release_date:`${movie.year}-01-01`,poster:posterFallback(movie.title),trailerQuery:`${movie.title} official trailer`}));
 
 const defaultAssistantMemory=()=>({ratings:{},saved:[],watched:[]});
@@ -287,7 +300,10 @@ const updateAssistantMemory=()=>{
   const favorite=ratings[0]?.[0];
   assistantMemory.textContent=`Memory active: ${ratings.length} rated, ${saved} saved, ${watched} watched${favorite?`. You rated “${favorite}” highly, so similar choices get a small boost.`:'.'}`;
 };
-const assistantValues=form=>Object.fromEntries(new FormData(form).entries());
+function getAssistantFilters(){
+  return Object.fromEntries(new FormData(assistantForm).entries());
+}
+const assistantValues=getAssistantFilters;
 const movieMatchesPlatform=(movie,platform)=>{
   const selected=normalizePlatform(platform);
   if(!selected)return true;
@@ -388,13 +404,57 @@ const createAssistantCard=rawMovie=>{
   return poster;
 };
 let assistantRenderRequest=0;
-const renderAssistantRecommendations=async ({scroll=false}={})=>{
+let assistantVariant=0;
+let lastAssistantSignature='';
+const shuffledMovies=(movies,variant=0)=>movies.map((movie,index)=>({movie,sort:Math.random()+((variant%11)*0.0001)+(index*0.00001)})).sort((a,b)=>a.sort-b.sort).map(item=>item.movie);
+const selectAssistantMovies=(exactRanked,closeRanked,{different=false}={})=>{
+  const exactPool=different?shuffledMovies(exactRanked,assistantVariant):exactRanked;
+  const closePool=different?shuffledMovies(closeRanked,assistantVariant+3):closeRanked;
+  let selection=[...exactPool.slice(0,5),...closePool].slice(0,5);
+  const combined=[...exactRanked,...closeRanked];
+  for(let attempt=0;attempt<6&&combined.length>5&&selection.map(movie=>normalizeMovie(movie).title).join('|')===lastAssistantSignature;attempt++){
+    selection=shuffledMovies(combined,assistantVariant+attempt+7).slice(0,5);
+  }
+  lastAssistantSignature=selection.map(movie=>normalizeMovie(movie).title).join('|');
+  return selection;
+};
+const getAssistantMoviePool=(candidates,answers,memory,{different=false}={})=>{
+  const source=candidates.length?candidates:assistantFallback;
+  const exact=source.filter(movie=>{
+    const normalized=normalizeMovie(movie);
+    return (answers.genre==='any'||(normalized.genreIds||[]).includes(Number(answers.genre)))&&
+      movieMatchesTime(movie,answers.time)&&
+      movieMatchesAge(normalized,answers.age)&&
+      movieMatchesPlatform(movie,answers.platform);
+  });
+  const exactTitles=new Set(exact.map(movie=>normalizeMovie(movie).title));
+  const exactRanked=exact
+    .map(movie=>({movie,score:scoreAssistantMovie(movie,answers,memory)}))
+    .sort((a,b)=>b.score-a.score)
+    .map(item=>item.movie);
+  const closeRanked=source
+    .filter(movie=>!exactTitles.has(normalizeMovie(movie).title))
+    .map(movie=>({movie,score:scoreAssistantMovie(movie,answers,memory)}))
+    .sort((a,b)=>b.score-a.score)
+    .map(item=>item.movie);
+  return {pool:selectAssistantMovies(exactRanked,closeRanked,{different}),exactEnough:exactRanked.length>=5};
+};
+const renderPosterWall=movies=>{
+  assistantResults.innerHTML='';
+  movies.forEach(movie=>assistantResults.appendChild(createAssistantCard(movie)));
+};
+const updateMovieWall=async ({scroll=false,different=false}={})=>{
   if(!assistantPanel||!assistantResults||!assistantReason)return;
   const requestId=++assistantRenderRequest;
-  const answers=assistantValues(assistantForm); const memory=getAssistantMemory();
+  if(different)assistantVariant++;
+  const answers=getAssistantFilters(); const memory=getAssistantMemory();
   const selectedPlatform=normalizePlatform(answers.platform);
   assistantPanel.hidden=false; assistantPanel.classList.add('is-visible');
-  assistantReason.textContent='Calculating the strongest three choices…'; assistantResults.replaceChildren();
+  const local={...getAssistantMoviePool(assistantFallback,answers,memory,{different:true}),source:assistantFallback};
+  renderPosterWall(local.pool);
+  assistantReason.textContent=local.exactEnough?assistantExplanation(answers,local.pool.map(normalizeMovie)):closestAssistantExplanation(answers,local.pool.map(normalizeMovie));
+  console.log('Assistant filters changed:', answers);
+  console.log('New movie results:', local.pool);
   try{
     let candidates;
     try{candidates=await fetchAssistantMovies(answers);}catch{candidates=assistantFallback;}
@@ -406,32 +466,33 @@ const renderAssistantRecommendations=async ({scroll=false}={})=>{
     }
     console.log('Selected platform:', answers.platform, 'Normalized:', selectedPlatform);
     console.log('Movies with Prime:', candidates.filter(movie=>platformValues(movie).some(platform=>normalizePlatform(platform).includes('prime'))));
-    const filtered=candidates.filter(movie=>{
-      const normalized=normalizeMovie(movie);
-      return (answers.genre==='any'||(normalized.genreIds||[]).includes(Number(answers.genre)))&&movieMatchesTime(movie,answers.time)&&movieMatchesAge(normalized,answers.age)&&movieMatchesPlatform(movie,answers.platform);
-    });
-    const exactTitles=new Set(filtered.map(movie=>normalizeMovie(movie).title));
-    const exactRanked=filtered.map(movie=>({movie,score:scoreAssistantMovie(movie,answers,memory)})).sort((a,b)=>b.score-a.score).map(item=>item.movie);
-    const closeRanked=candidates.filter(movie=>!exactTitles.has(normalizeMovie(movie).title)).map(movie=>({movie,score:scoreAssistantMovie(movie,answers,memory)})).sort((a,b)=>b.score-a.score).map(item=>item.movie);
-    const pool=[...exactRanked,...closeRanked].slice(0,5);
+    const {pool,exactEnough}=getAssistantMoviePool(candidates,answers,memory,{different});
     console.log('Filtered results:', pool);
-    const exactEnough=exactRanked.length>=5;
-    assistantResults.append(...pool.map(createAssistantCard));
+    console.log('New movie results:', pool);
+    renderPosterWall(pool);
     assistantReason.textContent=exactEnough?assistantExplanation(answers,pool.map(normalizeMovie)):closestAssistantExplanation(answers,pool.map(normalizeMovie));
   }catch(error){
     if(requestId!==assistantRenderRequest)return;
-    const pool=assistantFallback.slice(0,5);
-    assistantResults.append(...pool.map(createAssistantCard));
+    const pool=selectAssistantMovies([],assistantFallback,{different:true});
+    console.log('Assistant filters changed:', answers);
+    console.log('New movie results:', pool);
+    renderPosterWall(pool);
     assistantReason.textContent=closestAssistantExplanation(answers,pool.map(normalizeMovie));
   }
   if(scroll)assistantPanel.scrollIntoView({behavior:'smooth',block:'start'});
 };
+const renderAssistantRecommendations=updateMovieWall;
 assistantForm?.addEventListener('submit',async event=>{
   event.preventDefault();
-  renderAssistantRecommendations({scroll:true});
+  updateMovieWall({scroll:true,different:true});
 });
-assistantForm?.querySelectorAll('select,input').forEach(input=>input.addEventListener('change',()=>renderAssistantRecommendations()));
-if(assistantForm)renderAssistantRecommendations();
+const assistantInputs=document.querySelectorAll('[data-assistant-filter], .assistant-filter, #current-mood, #target-mood, #decision-genre, #platform, #watch-time');
+assistantInputs.forEach(input=>{
+  input.addEventListener('change',()=>updateMovieWall({different:true}));
+  input.addEventListener('input',()=>updateMovieWall({different:true}));
+});
+assistantRefreshButton?.addEventListener('click',()=>updateMovieWall({different:true,scroll:false}));
+if(assistantForm)updateMovieWall();
 document.querySelector('[data-clear-decision-memory]')?.addEventListener('click',()=>{try{localStorage.removeItem(assistantStorageKey);}catch{}updateAssistantMemory();});
 updateAssistantMemory();
 
