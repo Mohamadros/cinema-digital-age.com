@@ -2,7 +2,7 @@
 
 The supplied cinema photographs have been copied here with descriptive filenames. Their source files remain unchanged.
 
-- `hero-red-curtain.png` — homepage hero and gallery
+- `hero-red-curtain.jpg` — homepage hero background
 - `cinema-hall-red.jpg` — experience background and gallery
 - `cinema-screen.png` — gallery
 - `projector-auditorium.png` — gallery
