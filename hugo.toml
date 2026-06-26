@@ -28,7 +28,7 @@ enableRobotsTXT = true
   url = "/#home"
   weight = 10
 [[menu.main]]
-  name = "Mood Finder"
+  name = "Assistant"
   url = "/#mood-finder"
   weight = 20
 [[menu.main]]

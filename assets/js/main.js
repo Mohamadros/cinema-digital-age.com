@@ -222,6 +222,130 @@ const closeTrailer=()=>{trailerDialog.close();trailerDialog.querySelector('[data
 document.querySelector('[data-trailer-close]')?.addEventListener('click',closeTrailer);
 trailerDialog?.addEventListener('click',event=>{if(event.target===trailerDialog)closeTrailer();});
 
+const assistantForm=document.querySelector('[data-decision-form]');
+const assistantResults=document.querySelector('[data-assistant-results]');
+const assistantPanel=document.querySelector('[data-decision-results]');
+const assistantReason=document.querySelector('[data-decision-reason]');
+const assistantMemory=document.querySelector('[data-decision-memory]');
+const assistantStorageKey='cinemaDecisionMemory';
+const providerMap={netflix:'8',prime:'119',disney:'337'};
+const assistantFallback=[
+  {title:'Arrival',year:'2016',runtime:116,rating:7.9,genreIds:[878,18],platforms:['netflix','prime','library'],moods:['thoughtful','curious','inspired','moved'],age:'modern',overview:'A linguist works with the military to communicate with mysterious visitors, changing how she understands time and loss.',genre:'Sci-fi · Drama'},
+  {title:'Interstellar',year:'2014',runtime:169,rating:8.7,genreIds:[878,18],platforms:['prime','cinema','library'],moods:['inspired','thoughtful','moved'],age:'modern',overview:'A group of explorers travel through a wormhole to find humanity a future beyond Earth.',genre:'Sci-fi · Drama'},
+  {title:'Her',year:'2013',runtime:126,rating:8.0,genreIds:[878,10749,18],platforms:['netflix','prime','library'],moods:['lonely','romantic','curious','moved'],age:'modern',overview:'A lonely writer develops a relationship with an operating system that understands him deeply.',genre:'Sci-fi · Romance'},
+  {title:'The Martian',year:'2015',runtime:144,rating:8.0,genreIds:[878,12],platforms:['disney','prime','library'],moods:['inspired','energized','happy'],age:'modern',overview:'An astronaut stranded on Mars uses science, humor, and persistence to survive.',genre:'Sci-fi · Adventure'},
+  {title:'Blade Runner 2049',year:'2017',runtime:164,rating:8.0,genreIds:[878,18,53],platforms:['netflix','prime','library'],moods:['thoughtful','curious','moved'],age:'new',overview:'A young blade runner uncovers a buried secret that could reshape society.',genre:'Sci-fi · Thriller'},
+  {title:'Before Sunrise',year:'1995',runtime:101,rating:8.1,genreIds:[10749,18],platforms:['prime','library'],moods:['romantic','moved','relaxed'],age:'old',overview:'Two strangers meet on a train and spend one night walking and talking through Vienna.',genre:'Romance · Drama'},
+  {title:'Whiplash',year:'2014',runtime:107,rating:8.4,genreIds:[18],platforms:['netflix','prime','library'],moods:['energized','inspired','stressed'],age:'modern',overview:'A young drummer pushes himself under the pressure of a ruthless music teacher.',genre:'Drama'},
+  {title:'Mad Max: Fury Road',year:'2015',runtime:121,rating:8.1,genreIds:[28,878],platforms:['netflix','prime','cinema'],moods:['excited','energized'],age:'modern',overview:'A relentless desert chase turns survival into explosive visual cinema.',genre:'Action · Sci-fi'},
+  {title:'My Neighbor Totoro',year:'1988',runtime:86,rating:8.1,genreIds:[16,10751],platforms:['netflix','library'],moods:['relaxed','happy','nostalgic'],age:'old',overview:'Two sisters discover gentle forest spirits while adapting to a new home.',genre:'Animation · Family'},
+  {title:'Lost in Translation',year:'2003',runtime:102,rating:7.7,genreIds:[18,10749],platforms:['prime','library'],moods:['lonely','moved','relaxed'],age:'modern',overview:'Two strangers in Tokyo form a quiet connection during a moment of uncertainty.',genre:'Drama · Romance'},
+  {title:'Spider-Man: Into the Spider-Verse',year:'2018',runtime:117,rating:8.4,genreIds:[16,28,12],platforms:['netflix','prime','library'],moods:['happy','energized','inspired'],age:'new',overview:'Miles Morales discovers courage and identity across a visually explosive multiverse.',genre:'Animation · Action'},
+  {title:'Cinema Paradiso',year:'1988',runtime:124,rating:8.5,genreIds:[18],platforms:['library'],moods:['nostalgic','moved','romantic'],age:'old',overview:'A filmmaker remembers the theater, mentor, and childhood that shaped his love of cinema.',genre:'Drama'}
+].map(movie=>({...movie,release_date:`${movie.year}-01-01`,poster:posterFallback(movie.title),trailerQuery:`${movie.title} official trailer`}));
+
+const getAssistantMemory=()=>JSON.parse(localStorage.getItem(assistantStorageKey)||'{"ratings":{},"saved":[],"watched":[]}');
+const setAssistantMemory=memory=>{localStorage.setItem(assistantStorageKey,JSON.stringify(memory));updateAssistantMemory();};
+const updateAssistantMemory=()=>{
+  if(!assistantMemory)return;
+  const memory=getAssistantMemory();
+  const ratings=Object.entries(memory.ratings||{}).filter(([,score])=>Number(score)>0).sort((a,b)=>b[1]-a[1]);
+  const saved=(memory.saved||[]).length; const watched=(memory.watched||[]).length;
+  if(!ratings.length&&!saved&&!watched){assistantMemory.textContent='Rate or save films and this assistant will start explaining recommendations based on your previous choices.';return;}
+  const favorite=ratings[0]?.[0];
+  assistantMemory.textContent=`Memory active: ${ratings.length} rated, ${saved} saved, ${watched} watched${favorite?`. You rated “${favorite}” highly, so similar choices get a small boost.`:'.'}`;
+};
+const assistantValues=form=>Object.fromEntries(new FormData(form).entries());
+const movieMatchesPlatform=(movie,platform)=>platform==='any'||(movie.platforms||[]).includes(platform);
+const movieMatchesAge=(movie,age)=>{
+  const year=Number(movie.year||(movie.release_date||'').slice(0,4)||0);
+  if(age==='new')return year>=2018;
+  if(age==='modern')return year>=2000&&year<2018;
+  if(age==='old')return year>0&&year<2000;
+  return true;
+};
+const movieMatchesTime=(movie,time)=>{
+  const runtime=Number(movie.runtime||0);
+  if(!runtime||time==='any')return true;
+  if(time==='short')return runtime<=100;
+  if(time==='medium')return runtime>95&&runtime<=140;
+  if(time==='long')return runtime>140;
+  return true;
+};
+const scoreAssistantMovie=(movie,answers,memory)=>{
+  let score=Number(movie.rating||movie.vote_average||0);
+  const genreIds=movie.genreIds||movie.genre_ids||[];
+  if(answers.genre==='any'||genreIds.includes(Number(answers.genre)))score+=3;
+  if(movieMatchesTime(movie,answers.time))score+=1.4;
+  if(movieMatchesAge(movie,answers.age))score+=1.2;
+  if(movieMatchesPlatform(movie,answers.platform))score+=1;
+  if((movie.moods||[]).includes(answers.currentMood))score+=.8;
+  if((movie.moods||[]).includes(answers.targetMood))score+=2.2;
+  const ratingBoost=Number(memory.ratings?.[movie.title]||0);
+  if(ratingBoost>=4)score+=1.8;
+  if((memory.saved||[]).includes(movie.title))score+=.5;
+  if((memory.watched||[]).includes(movie.title))score-=2;
+  return score;
+};
+const assistantExplanation=(answers,movies)=>{
+  const genreLabel=answers.genre==='any'?'a surprise genre':(genreNames[answers.genre]||'your selected genre');
+  const titles=movies.map(movie=>movie.title).join(', ');
+  const memory=getAssistantMemory();
+  const topRated=Object.entries(memory.ratings||{}).filter(([,score])=>Number(score)>=4).map(([title])=>title)[0];
+  return `You have ${answers.time==='any'?'flexible time':answers.time.replace('medium','100–140 minutes').replace('short','under 100 minutes').replace('long','more than 140 minutes')}, you want to feel ${answers.targetMood}, and you chose ${genreLabel}. ${topRated?`Because you rated “${topRated}” highly, similar films receive extra weight. `:''}Best choices: ${titles}.`;
+};
+const fetchAssistantMovies=async answers=>{
+  if(!token)throw new Error('TMDB token not configured');
+  const params={include_adult:'false',sort_by:'vote_average.desc','vote_count.gte':'700',page:'1'};
+  if(answers.genre!=='any')params.with_genres=answers.genre;
+  if(answers.time==='short')params['with_runtime.lte']='100';
+  if(answers.time==='medium'){params['with_runtime.gte']='95';params['with_runtime.lte']='140';}
+  if(answers.time==='long')params['with_runtime.gte']='140';
+  if(answers.age==='new')params['primary_release_date.gte']='2018-01-01';
+  if(answers.age==='modern'){params['primary_release_date.gte']='2000-01-01';params['primary_release_date.lte']='2017-12-31';}
+  if(answers.age==='old')params['primary_release_date.lte']='1999-12-31';
+  if(providerMap[answers.platform]){params.watch_region='DE';params.with_watch_providers=providerMap[answers.platform];}
+  const data=await tmdb('/discover/movie',params);
+  return data.results.map(normalizeMovie);
+};
+const createAssistantCard=rawMovie=>{
+  const movie=normalizeMovie(rawMovie); const memory=getAssistantMemory();
+  const card=document.createElement('article'); card.className='assistant-card';
+  const poster=document.createElement('div'); poster.className='movie-poster';
+  const image=document.createElement('img'); image.src=movie.poster; image.alt=`Poster for ${movie.title}`; image.loading='lazy'; image.addEventListener('error',()=>{image.src=posterFallback(movie.title)},{once:true});
+  const rating=document.createElement('span'); rating.className='movie-rating'; rating.textContent=movie.rating==='0.0'?'Not rated':`★ ${movie.rating}`;
+  poster.append(image,rating);
+  const copy=document.createElement('div'); copy.className='assistant-copy';
+  const match=document.createElement('span'); match.className='assistant-match'; match.textContent=`${movie.year} · ${movie.genre||'Film'}`;
+  const title=document.createElement('h4'); title.textContent=movie.title;
+  const overview=document.createElement('p'); overview.textContent=movie.overview;
+  const starWrap=document.createElement('div'); starWrap.className='assistant-rating'; starWrap.setAttribute('aria-label',`Rate ${movie.title}`);
+  for(let i=1;i<=5;i++){const star=document.createElement('button');star.type='button';star.textContent='★';star.setAttribute('aria-label',`${i} out of 5`);star.classList.toggle('is-active',Number(memory.ratings?.[movie.title]||0)>=i);star.addEventListener('click',()=>{const next=getAssistantMemory();next.ratings={...(next.ratings||{}),[movie.title]:i};setAssistantMemory(next);starWrap.querySelectorAll('button').forEach((button,index)=>button.classList.toggle('is-active',index<i));});starWrap.append(star);}
+  const actions=document.createElement('div'); actions.className='assistant-actions';
+  const save=document.createElement('button'); save.type='button'; save.textContent='Save'; save.classList.toggle('is-active',(memory.saved||[]).includes(movie.title)); save.addEventListener('click',()=>{const next=getAssistantMemory();const set=new Set(next.saved||[]);set.has(movie.title)?set.delete(movie.title):set.add(movie.title);next.saved=[...set];setAssistantMemory(next);save.classList.toggle('is-active',set.has(movie.title));});
+  const watched=document.createElement('button'); watched.type='button'; watched.textContent='Watched'; watched.classList.toggle('is-active',(memory.watched||[]).includes(movie.title)); watched.addEventListener('click',()=>{const next=getAssistantMemory();const set=new Set(next.watched||[]);set.has(movie.title)?set.delete(movie.title):set.add(movie.title);next.watched=[...set];setAssistantMemory(next);watched.classList.toggle('is-active',set.has(movie.title));});
+  const trailer=document.createElement('button'); trailer.type='button'; trailer.textContent='Trailer'; trailer.addEventListener('click',()=>openTrailer(movie));
+  actions.append(save,watched,trailer);
+  copy.append(match,title,overview,starWrap,actions); card.append(poster,copy); return card;
+};
+assistantForm?.addEventListener('submit',async event=>{
+  event.preventDefault();
+  const answers=assistantValues(assistantForm); const memory=getAssistantMemory();
+  assistantPanel.hidden=false; assistantReason.textContent='Calculating the strongest three choices…'; assistantResults.replaceChildren();
+  let candidates;
+  try{candidates=await fetchAssistantMovies(answers);}catch{candidates=assistantFallback;}
+  const filtered=candidates.filter(movie=>{
+    const normalized=normalizeMovie(movie);
+    return (answers.genre==='any'||(normalized.genreIds||[]).includes(Number(answers.genre)))&&movieMatchesTime(movie,answers.time)&&movieMatchesAge(normalized,answers.age);
+  });
+  const pool=(filtered.length>=3?filtered:candidates).map(movie=>({movie,score:scoreAssistantMovie(movie,answers,memory)})).sort((a,b)=>b.score-a.score).slice(0,3).map(item=>item.movie);
+  assistantResults.append(...pool.map(createAssistantCard));
+  assistantReason.textContent=assistantExplanation(answers,pool.map(normalizeMovie));
+  assistantPanel.scrollIntoView({behavior:'smooth',block:'start'});
+});
+document.querySelector('[data-clear-decision-memory]')?.addEventListener('click',()=>{localStorage.removeItem(assistantStorageKey);updateAssistantMemory();});
+updateAssistantMemory();
+
 const communityForm=document.querySelector('[data-community-form]');
 const memoryWall=document.querySelector('.memory-wall');
 const addMemoryCard=memory=>{

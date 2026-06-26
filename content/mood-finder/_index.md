@@ -1,8 +1,8 @@
 +++
-title = "How Are You Feeling Tonight?"
-kicker = "Movie Mood Finder"
-intro = "Choose the feeling you are carrying. We will find films that meet you there."
+title = "Movie Decision Assistant"
+kicker = "What should I watch?"
+intro = "Answer a few questions and get three strong choices instead of scrolling through endless catalogues."
 weight = 10
 +++
 
-The recommendations combine emotional themes with TMDB discovery data. They are invitations rather than prescriptions: a starting point for your next cinematic experience.
+The assistant combines time, mood, genre, platform preference, and your saved local ratings to create a more useful film shortlist.
