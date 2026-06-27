@@ -209,8 +209,6 @@ const comingResults = document.querySelector('[data-coming-results]');
 const comingStatus = document.querySelector('[data-coming-status]');
 const genreFilter = document.querySelector('[data-genre-filter]');
 const movieSearch = document.querySelector('[data-movie-search]');
-const monthFilter = document.querySelector('[data-month-filter]');
-const trailerFilter = document.querySelector('[data-trailer-filter]');
 const anticipatedFilter = document.querySelector('[data-anticipated-filter]');
 const loadMoreButton = document.querySelector('[data-load-more]');
 const apiNotice = document.querySelector('[data-api-notice]');
@@ -224,23 +222,11 @@ let comingLoading = false;
 const fillGenres = genres => { genres.forEach(genre => { const option=document.createElement('option'); option.value=genre.id; option.textContent=genre.name; genreFilter?.append(option); }); };
 const getRadarStore=key=>{try{return JSON.parse(localStorage.getItem(key)||'[]');}catch{return [];}};
 const setRadarStore=(key,value)=>{try{localStorage.setItem(key,JSON.stringify(value));}catch{}};
-const monthLabel=value=>{
-  if(!value)return '';
-  const date=new Date(`${value}-01T00:00:00`);
-  return date.toLocaleDateString(undefined,{month:'long',year:'numeric'});
-};
-const fillReleaseMonths=movies=>{
-  if(!monthFilter)return;
-  const current=monthFilter.value;
-  const months=[...new Set(movies.map(movie=>(movie.release_date||movie.releaseDate||'').slice(0,7)).filter(Boolean))].sort();
-  monthFilter.replaceChildren(new Option('Any month',''),...months.map(month=>new Option(monthLabel(month),month)));
-  monthFilter.value=months.includes(current)?current:'';
-};
 const normalizeRadarMovie=rawMovie=>{
   const movie=normalizeMovie(rawMovie);
   const releaseType=rawMovie.releaseType||rawMovie.release_type||'cinema';
   const platform=rawMovie.platform||rawMovie.platforms?.[0]||(releaseType==='streaming'?'Streaming':'Cinema release');
-  const buzz=rawMovie.buzz||(rawMovie.popularity>90?'High':rawMovie.popularity>35?'Medium':'Low');
+  const buzz=rawMovie.buzz||(rawMovie.popularity>25?'High':rawMovie.popularity>8?'Medium':'Low');
   const trailerAvailable=Boolean(rawMovie.trailerAvailable||rawMovie.trailer_available);
   const tag=rawMovie.tag||(trailerAvailable?'Trailer out':buzz==='High'?'Highly anticipated':buzz==='Medium'?'No audience rating yet':'Limited information');
   return {
@@ -260,23 +246,17 @@ const buzzRank=buzz=>({Low:1,Medium:2,High:3}[buzz]||1);
 const getRadarFilters=()=>({
   query:movieSearch?.value.trim().toLowerCase()||'',
   genre:genreFilter?.value||'',
-  month:monthFilter?.value||'',
-  trailer:trailerFilter?.value||'',
   anticipated:anticipatedFilter?.value||''
 });
 const filterRadarMovies=(movies,filters=getRadarFilters())=>{
   const hidden=new Set(getRadarStore(radarHiddenKey));
   return movies.map(normalizeRadarMovie).filter(movie=>{
-    const releaseMonth=(movie.releaseDate||movie.release_date||'').slice(0,7);
     const searchable=`${movie.title} ${movie.overview} ${movie.genre} ${movie.director} ${movie.actors}`.toLowerCase();
     const genreMatch=!filters.genre||movie.genreIds.includes(Number(filters.genre));
-    const trailerMatch=!filters.trailer||(filters.trailer==='yes'?movie.trailerAvailable:!movie.trailerAvailable);
     const anticipationMatch=!filters.anticipated||(filters.anticipated==='high'?movie.buzz==='High':buzzRank(movie.buzz)>=2);
     return !hidden.has(movie.title)&&
       (!filters.query||searchable.includes(filters.query))&&
       genreMatch&&
-      (!filters.month||releaseMonth===filters.month)&&
-      trailerMatch&&
       anticipationMatch;
   }).sort((a,b)=>anticipatedFilter?.value?buzzRank(b.buzz)-buzzRank(a.buzz)||a.releaseDate.localeCompare(b.releaseDate):a.releaseDate.localeCompare(b.releaseDate));
 };
@@ -382,11 +362,10 @@ const loadComingPage = async (reset=false) => {
       releaseType:'cinema',
       platform:'Cinema release',
       trailerAvailable:false,
-      buzz:movie.popularity>90?'High':movie.popularity>35?'Medium':'Low',
-      tag:movie.popularity>90?'Highly anticipated':'No audience rating yet'
+      buzz:movie.popularity>25?'High':movie.popularity>8?'Medium':'Low',
+      tag:movie.popularity>25?'Highly anticipated':'No audience rating yet'
     }));
     comingMovies=reset?batch:[...comingMovies,...batch];
-    fillReleaseMonths(comingMovies);
     showComing(filterRadarMovies(comingMovies));
   }catch{comingStatus.textContent='The live movie catalogue could not be reached. Please check the TMDB token.';}
   finally{comingLoading=false;if(loadMoreButton)loadMoreButton.disabled=false;}
@@ -403,17 +382,44 @@ const loadComing = async () => {
       return;
     }catch{}
   }
-  apiNotice.hidden=false;comingMovies=fallbackUpcoming;fillGenres(Object.entries(genreNames).map(([id,name])=>({id,name})));fillReleaseMonths(comingMovies);comingPage=1;comingTotalPages=1;showComing(filterRadarMovies(comingMovies));comingStatus.textContent=`${comingMovies.length} radar demonstration films. Connect TMDB for the complete live catalogue and official posters.`;
+  apiNotice.hidden=false;comingMovies=fallbackUpcoming;fillGenres(Object.entries(genreNames).map(([id,name])=>({id,name})));comingPage=1;comingTotalPages=1;showComing(filterRadarMovies(comingMovies));comingStatus.textContent=`${comingMovies.length} radar demonstration films. Connect TMDB for the complete live catalogue and official posters.`;
 };
-const applyRadarFilters=()=>showComing(filterRadarMovies(comingMovies));
+const mergeRadarMovies=movies=>{
+  const seen=new Set(comingMovies.map(movie=>movie.id||movie.title));
+  const fresh=movies.filter(movie=>{
+    const key=movie.id||movie.title;
+    if(seen.has(key))return false;
+    seen.add(key);
+    return true;
+  });
+  comingMovies=[...comingMovies,...fresh];
+};
+const applyRadarFilters=async ()=>{
+  const filters=getRadarFilters();
+  if(token&&filters.query.length>2){
+    try{
+      const today=new Date().toISOString().slice(0,10);
+      const data=await tmdb('/search/movie',{query:filters.query,include_adult:'false',region:'DE',page:'1'});
+      mergeRadarMovies((data.results||[])
+        .filter(movie=>!movie.release_date||movie.release_date>=today)
+        .map(movie=>({
+          ...movie,
+          releaseType:'cinema',
+          platform:'Cinema release',
+          trailerAvailable:false,
+          buzz:movie.popularity>25?'High':movie.popularity>8?'Medium':'Low',
+          tag:movie.popularity>25?'Highly anticipated':'No audience rating yet'
+        })));
+    }catch{}
+  }
+  showComing(filterRadarMovies(comingMovies,filters));
+};
 genreFilter?.addEventListener('change',applyRadarFilters);
-monthFilter?.addEventListener('change',applyRadarFilters);
-trailerFilter?.addEventListener('change',applyRadarFilters);
 anticipatedFilter?.addEventListener('change',applyRadarFilters);
 loadMoreButton?.addEventListener('click',()=>loadComingPage(false));
 let searchTimer;
 movieSearch?.addEventListener('input', () => {
-  clearTimeout(searchTimer); searchTimer=setTimeout(async () => {
+  clearTimeout(searchTimer); searchTimer=setTimeout(() => {
     applyRadarFilters();
   },350);
 });
