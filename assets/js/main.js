@@ -210,8 +210,6 @@ const comingStatus = document.querySelector('[data-coming-status]');
 const genreFilter = document.querySelector('[data-genre-filter]');
 const movieSearch = document.querySelector('[data-movie-search]');
 const monthFilter = document.querySelector('[data-month-filter]');
-const platformFilter = document.querySelector('[data-platform-filter]');
-const releaseFilter = document.querySelector('[data-release-filter]');
 const trailerFilter = document.querySelector('[data-trailer-filter]');
 const anticipatedFilter = document.querySelector('[data-anticipated-filter]');
 const loadMoreButton = document.querySelector('[data-load-more]');
@@ -263,8 +261,6 @@ const getRadarFilters=()=>({
   query:movieSearch?.value.trim().toLowerCase()||'',
   genre:genreFilter?.value||'',
   month:monthFilter?.value||'',
-  platform:normalizePlatform(platformFilter?.value||''),
-  release:releaseFilter?.value||'',
   trailer:trailerFilter?.value||'',
   anticipated:anticipatedFilter?.value||''
 });
@@ -272,18 +268,14 @@ const filterRadarMovies=(movies,filters=getRadarFilters())=>{
   const hidden=new Set(getRadarStore(radarHiddenKey));
   return movies.map(normalizeRadarMovie).filter(movie=>{
     const releaseMonth=(movie.releaseDate||movie.release_date||'').slice(0,7);
-    const moviePlatform=normalizePlatform(movie.platform);
+    const searchable=`${movie.title} ${movie.overview} ${movie.genre} ${movie.director} ${movie.actors}`.toLowerCase();
     const genreMatch=!filters.genre||movie.genreIds.includes(Number(filters.genre));
-    const platformMatch=!filters.platform||moviePlatform.includes(filters.platform)||filters.platform.includes(moviePlatform)||movie.releaseType===filters.platform;
-    const releaseMatch=!filters.release||movie.releaseType===filters.release;
     const trailerMatch=!filters.trailer||(filters.trailer==='yes'?movie.trailerAvailable:!movie.trailerAvailable);
     const anticipationMatch=!filters.anticipated||(filters.anticipated==='high'?movie.buzz==='High':buzzRank(movie.buzz)>=2);
     return !hidden.has(movie.title)&&
-      (!filters.query||movie.title.toLowerCase().includes(filters.query))&&
+      (!filters.query||searchable.includes(filters.query))&&
       genreMatch&&
       (!filters.month||releaseMonth===filters.month)&&
-      platformMatch&&
-      releaseMatch&&
       trailerMatch&&
       anticipationMatch;
   }).sort((a,b)=>anticipatedFilter?.value?buzzRank(b.buzz)-buzzRank(a.buzz)||a.releaseDate.localeCompare(b.releaseDate):a.releaseDate.localeCompare(b.releaseDate));
@@ -367,6 +359,11 @@ const showComing = (movies, append=false) => {
   const cards=movies.map(createRadarCard);
   preserveComingPosition(() => { if(append)comingResults.append(...cards); else comingResults.replaceChildren(...cards); });
   cards.forEach(card=>card.classList.add('is-visible'));
+  if(!cards.length){
+    comingStatus.textContent='No movies found for this filter. Try changing your options.';
+    if(loadMoreButton) loadMoreButton.hidden=true;
+    return;
+  }
   const total=comingResults.children.length;
   comingStatus.textContent=`${total} ${total===1?'future film':'future films'} on the radar${comingTotalPages>comingPage?' — more available':''}.`;
   if(loadMoreButton) loadMoreButton.hidden=!token||comingPage>=comingTotalPages;
@@ -376,20 +373,14 @@ const loadComingPage = async (reset=false) => {
   if(reset){comingPage=0;comingTotalPages=1;comingResults.replaceChildren();}
   if(comingPage>=comingTotalPages&&comingPage!==0)return;
   comingLoading=true;if(loadMoreButton)loadMoreButton.disabled=true;comingStatus.textContent='Loading future releases…';
-  const nextPage=comingPage+1;const filters=getRadarFilters();const query=filters.query;const genre=filters.genre;const today=new Date().toISOString().slice(0,10);
+  const nextPage=comingPage+1;const today=new Date().toISOString().slice(0,10);
   try{
-    let data;
-    if(query.length>2){data=await tmdb('/search/movie',{query,include_adult:'false',region:'DE',page:String(nextPage)});data.results=data.results.filter(movie=>!movie.release_date||movie.release_date>=today);}
-    else{
-      const params={'primary_release_date.gte':today,region:'DE',with_release_type:filters.release==='streaming'?'4':filters.release==='cinema'?'2|3':'2|3|4',with_genres:genre,sort_by:filters.anticipated?'popularity.desc':'primary_release_date.asc',include_adult:'false',page:String(nextPage)};
-      if(filters.month){params['primary_release_date.gte']=`${filters.month}-01`;params['primary_release_date.lte']=`${filters.month}-31`;}
-      data=await tmdb('/discover/movie',params);
-    }
+    const data=await tmdb('/discover/movie',{'primary_release_date.gte':today,region:'DE',with_release_type:'2|3|4',sort_by:'primary_release_date.asc',include_adult:'false',page:String(nextPage)});
     comingPage=nextPage;comingTotalPages=Math.min(Number(data.total_pages)||1,500);
     const batch=data.results.map(movie=>({
       ...movie,
-      releaseType:filters.release||'cinema',
-      platform:filters.release==='streaming'?'Streaming':'Cinema release',
+      releaseType:'cinema',
+      platform:'Cinema release',
       trailerAvailable:false,
       buzz:movie.popularity>90?'High':movie.popularity>35?'Medium':'Low',
       tag:movie.popularity>90?'Highly anticipated':'No audience rating yet'
@@ -402,15 +393,21 @@ const loadComingPage = async (reset=false) => {
 };
 const loadComing = async () => {
   if(token){
-    try{const genres=await tmdb('/genre/movie/list');genreNames=Object.fromEntries(genres.genres.map(g=>[g.id,g.name]));fillGenres(genres.genres);await loadComingPage(true);return;}catch{}
+    try{
+      const genres=await tmdb('/genre/movie/list');
+      genreNames=Object.fromEntries(genres.genres.map(g=>[g.id,g.name]));
+      fillGenres(genres.genres);
+      await loadComingPage(true);
+      await loadComingPage(false);
+      await loadComingPage(false);
+      return;
+    }catch{}
   }
   apiNotice.hidden=false;comingMovies=fallbackUpcoming;fillGenres(Object.entries(genreNames).map(([id,name])=>({id,name})));fillReleaseMonths(comingMovies);comingPage=1;comingTotalPages=1;showComing(filterRadarMovies(comingMovies));comingStatus.textContent=`${comingMovies.length} radar demonstration films. Connect TMDB for the complete live catalogue and official posters.`;
 };
-const applyRadarFilters=()=>{if(token)loadComingPage(true);else showComing(filterRadarMovies(comingMovies));};
+const applyRadarFilters=()=>showComing(filterRadarMovies(comingMovies));
 genreFilter?.addEventListener('change',applyRadarFilters);
 monthFilter?.addEventListener('change',applyRadarFilters);
-platformFilter?.addEventListener('change',applyRadarFilters);
-releaseFilter?.addEventListener('change',applyRadarFilters);
 trailerFilter?.addEventListener('change',applyRadarFilters);
 anticipatedFilter?.addEventListener('change',applyRadarFilters);
 loadMoreButton?.addEventListener('click',()=>loadComingPage(false));
