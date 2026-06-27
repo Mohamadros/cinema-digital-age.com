@@ -525,51 +525,13 @@ const assistantRatingLinks=title=>{
     metacritic:`https://www.metacritic.com/search/${query}/`
   };
 };
-const assistantKnownRatings={
-  'Arrival':{rotten:'94%',imdb:'7.9',metacritic:'81'},
-  'Interstellar':{rotten:'73%',imdb:'8.7',metacritic:'74'},
-  'Her':{rotten:'95%',imdb:'8.0',metacritic:'91'},
-  'The Martian':{rotten:'91%',imdb:'8.0',metacritic:'80'},
-  'Before Sunrise':{rotten:'100%',imdb:'8.1',metacritic:'77'},
-  'Whiplash':{rotten:'94%',imdb:'8.5',metacritic:'89'},
-  'Mad Max: Fury Road':{rotten:'97%',imdb:'8.1',metacritic:'90'},
-  'My Neighbor Totoro':{rotten:'94%',imdb:'8.1',metacritic:'86'},
-  'Lost in Translation':{rotten:'95%',imdb:'7.7',metacritic:'89'},
-  'Spider-Man: Into the Spider-Verse':{rotten:'97%',imdb:'8.4',metacritic:'87'},
-  'Cinema Paradiso':{rotten:'90%',imdb:'8.5',metacritic:'80'},
-  'The Pursuit of Happyness':{rotten:'67%',imdb:'8.0',metacritic:'64'},
-  'Rocky':{rotten:'92%',imdb:'8.1',metacritic:'70'},
-  'La La Land':{rotten:'91%',imdb:'8.0',metacritic:'94'},
-  'About Time':{rotten:'70%',imdb:'7.8',metacritic:'55'},
-  'Ex Machina':{rotten:'92%',imdb:'7.7',metacritic:'78'},
-  'The Social Network':{rotten:'96%',imdb:'7.8',metacritic:'95'},
-  'The Dark Knight':{rotten:'94%',imdb:'9.0',metacritic:'84'},
-  'Inside Out':{rotten:'98%',imdb:'8.1',metacritic:'94'},
-  'Everything Everywhere All at Once':{rotten:'94%',imdb:'7.8',metacritic:'81'},
-  'The Grand Budapest Hotel':{rotten:'92%',imdb:'8.1',metacritic:'88'},
-  'Parasite':{rotten:'99%',imdb:'8.5',metacritic:'97'},
-  'Your Name':{rotten:'98%',imdb:'8.4',metacritic:'81'},
-  'The Apartment':{rotten:'93%',imdb:'8.3',metacritic:'94'},
-  'Paddington 2':{rotten:'99%',imdb:'7.8',metacritic:'88'},
-  'Sing Street':{rotten:'95%',imdb:'7.9',metacritic:'79'},
-  'Amélie':{rotten:'89%',imdb:'8.3',metacritic:'69'},
-  'Chef':{rotten:'87%',imdb:'7.3',metacritic:'68'},
-  'The Secret Life of Walter Mitty':{rotten:'52%',imdb:'7.3',metacritic:'54'},
-  'Soul':{rotten:'95%',imdb:'8.0',metacritic:'83'},
-  'The Intouchables':{rotten:'76%',imdb:'8.5',metacritic:'57'},
-  'Little Miss Sunshine':{rotten:'91%',imdb:'7.8',metacritic:'80'},
-  'Billy Elliot':{rotten:'85%',imdb:'7.7',metacritic:'74'},
-  'Good Will Hunting':{rotten:'97%',imdb:'8.3',metacritic:'70'},
-  'Remember the Titans':{rotten:'73%',imdb:'7.8',metacritic:'48'},
-  'Hidden Figures':{rotten:'93%',imdb:'7.8',metacritic:'74'},
-  'Moneyball':{rotten:'94%',imdb:'7.6',metacritic:'87'},
-  "The King's Speech":{rotten:'94%',imdb:'8.0',metacritic:'88'},
-  'School of Rock':{rotten:'92%',imdb:'7.2',metacritic:'82'},
-  'Rudy':{rotten:'78%',imdb:'7.5',metacritic:'71'},
-  'October Sky':{rotten:'91%',imdb:'7.8',metacritic:'71'},
-  'The Truman Show':{rotten:'94%',imdb:'8.2',metacritic:'90'},
-  'Mission: Impossible - Fallout':{rotten:'97%',imdb:'7.7',metacritic:'86'},
-  'The Fabelmans':{rotten:'92%',imdb:'7.5',metacritic:'84'}
+const assistantRatingSources=title=>{
+  const links=assistantRatingLinks(title);
+  return [
+    {label:'IMDb',url:links.imdb,icon:'https://www.imdb.com/favicon.ico'},
+    {label:'Rotten Tomatoes',url:links.rotten,icon:'https://www.rottentomatoes.com/favicon.ico'},
+    {label:'Metacritic',url:links.metacritic,icon:'https://www.metacritic.com/favicon.ico'}
+  ];
 };
 const assistantFallback=[
   {title:'Arrival',year:'2016',runtime:116,rating:7.9,genreIds:[878,18],platforms:['Prime Video','Netflix','My own watchlist'],moods:['thoughtful','curious','inspired','moved'],age:'modern',overview:'A linguist works with the military to communicate with mysterious visitors, changing how she understands time and loss.',genre:'Sci-fi · Drama'},
@@ -841,25 +803,22 @@ const openMovieDetails=movie=>{
   const meta=document.createElement('p'); meta.className='movie-detail-meta'; meta.textContent=`${normalized.year} · ${normalized.genre||'Film'} · ${normalized.rating==='0.0'?'Not rated':`★ ${normalized.rating}`}`;
   const storyLabel=document.createElement('span'); storyLabel.className='movie-detail-label'; storyLabel.textContent='Short story';
   const overview=document.createElement('p'); overview.className='movie-detail-story'; overview.textContent=normalized.overview;
-  const ratingLinks=assistantRatingLinks(normalized.title);
-  const knownRatings=assistantKnownRatings[normalized.title]||movie.externalRatings||{};
-  const ratings=document.createElement('div'); ratings.className='critic-ratings'; ratings.setAttribute('aria-label',`External ratings for ${normalized.title}`);
-  [
-    ['Rotten Tomatoes',knownRatings.rotten||'Open score',ratingLinks.rotten],
-    ['IMDb',knownRatings.imdb||'Open rating',ratingLinks.imdb],
-    ['Metacritic',knownRatings.metacritic||'Open score',ratingLinks.metacritic]
-  ].forEach(([label,value,url])=>{
+  const ratings=document.createElement('div'); ratings.className='critic-ratings critic-logo-row'; ratings.setAttribute('aria-label',`External rating websites for ${normalized.title}`);
+  assistantRatingSources(normalized.title).forEach(({label,url,icon})=>{
     const link=document.createElement('a');
     link.href=url;
     link.target='_blank';
     link.rel='noopener';
     link.className='critic-rating-link';
-    link.innerHTML=`<span>${label}</span><strong>${value}</strong>`;
+    link.setAttribute('aria-label',`Open ${normalized.title} on ${label}`);
+    const logo=document.createElement('img');
+    logo.src=icon;
+    logo.alt=label;
+    logo.loading='lazy';
+    logo.decoding='async';
+    link.append(logo);
     ratings.append(link);
   });
-  const ratingNote=document.createElement('p');
-  ratingNote.className='movie-detail-note';
-  ratingNote.textContent=knownRatings.rotten?'Ratings are shown as quick reference; open each source for the latest score.':'Open each source to see the latest public rating for this movie.';
   const actions=document.createElement('div'); actions.className='assistant-actions detail-actions';
   const save=document.createElement('button'); save.type='button'; save.textContent='Save';
   const watched=document.createElement('button'); watched.type='button'; watched.textContent='Watched';
@@ -868,7 +827,7 @@ const openMovieDetails=movie=>{
   save.addEventListener('click',()=>{const next=getAssistantMemory();const set=new Set(next.saved||[]);set.has(normalized.title)?set.delete(normalized.title):set.add(normalized.title);next.saved=[...set];setAssistantMemory(next);sync();});
   watched.addEventListener('click',()=>{const next=getAssistantMemory();const set=new Set(next.watched||[]);set.has(normalized.title)?set.delete(normalized.title):set.add(normalized.title);next.watched=[...set];setAssistantMemory(next);sync();});
   trailer.addEventListener('click',()=>openTrailer(normalized));
-  actions.append(save,watched,trailer); detail.append(title,meta,storyLabel,overview,ratings,ratingNote,actions); content.append(detail); message.textContent=''; sync(); trailerDialog.showModal();
+  actions.append(save,watched,trailer); detail.append(title,meta,storyLabel,overview,ratings,actions); content.append(detail); message.textContent=''; sync(); trailerDialog.showModal();
 };
 const createAssistantCard=rawMovie=>{
   const movie=normalizeMovie(rawMovie);
