@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1200" role="img" aria-labelledby="title desc">
+  <title id="title">Dogville poster-inspired artwork</title>
+  <desc id="desc">A minimalist dark poster inspired by Dogville with chalk stage markings.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#050505"/>
+      <stop offset=".58" stop-color="#15100d"/>
+      <stop offset="1" stop-color="#330807"/>
+    </linearGradient>
+    <radialGradient id="light" cx=".5" cy=".2" r=".65">
+      <stop offset="0" stop-color="#f5f5f5" stop-opacity=".18"/>
+      <stop offset=".42" stop-color="#d4af37" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency=".7" numOctaves="3" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+      <feComponentTransfer>
+        <feFuncA type="table" tableValues="0 .12"/>
+      </feComponentTransfer>
+    </filter>
+  </defs>
+  <rect width="800" height="1200" fill="url(#bg)"/>
+  <rect width="800" height="1200" fill="url(#light)"/>
+  <rect width="800" height="1200" filter="url(#grain)" opacity=".38"/>
+  <g fill="none" stroke="#f5f5f5" stroke-width="5" opacity=".72">
+    <path d="M126 260h548v592H126z"/>
+    <path d="M126 462h548M126 650h548M304 260v592M500 260v592"/>
+    <path d="M152 304h122v112H152zM526 304h122v112H526zM330 696h144v112H330z"/>
+  </g>
+  <g fill="#d4af37" font-family="Arial, Helvetica, sans-serif" font-weight="700" letter-spacing="7">
+    <text x="400" y="115" font-size="24" text-anchor="middle">LARS VON TRIER</text>
+    <text x="400" y="1045" font-size="28" text-anchor="middle">2003</text>
+  </g>
+  <text x="400" y="980" fill="#f5f5f5" font-family="Georgia, serif" font-size="112" font-weight="700" text-anchor="middle">Dogville</text>
+  <text x="400" y="1095" fill="#d8d0c5" font-family="Arial, Helvetica, sans-serif" font-size="24" text-anchor="middle" letter-spacing="5">A FILM THAT DOES NOT LET YOU REST</text>
+</svg>
