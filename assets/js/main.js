@@ -884,11 +884,40 @@ const openMovieDetails=async movie=>{
   const save=document.createElement('button'); save.type='button'; save.textContent='Save';
   const watched=document.createElement('button'); watched.type='button'; watched.textContent='Watched';
   const trailer=document.createElement('button'); trailer.type='button'; trailer.textContent='Trailer';
-  const sync=()=>{const memory=getAssistantMemory();save.classList.toggle('is-active',(memory.saved||[]).includes(normalized.title));watched.classList.toggle('is-active',(memory.watched||[]).includes(normalized.title));};
+  const ratingPanel=document.createElement('div'); ratingPanel.className='watched-rating-panel'; ratingPanel.hidden=true;
+  const ratingQuestion=document.createElement('p'); ratingQuestion.textContent='How would you rate this movie?';
+  const ratingScale=document.createElement('div'); ratingScale.className='watched-rating-scale';
+  const ratingStatus=document.createElement('small'); ratingStatus.className='watched-rating-status';
+  Array.from({length:10},(_,index)=>index+1).forEach(score=>{
+    const button=document.createElement('button');
+    button.type='button';
+    button.textContent=String(score);
+    button.setAttribute('aria-label',`Rate ${normalized.title} ${score} out of 10`);
+    button.addEventListener('click',()=>{
+      const next=getAssistantMemory();
+      next.ratings={...(next.ratings||{}),[normalized.title]:score};
+      setAssistantMemory(next);
+      sync();
+      ratingStatus.textContent=`Your rating: ${score}/10`;
+    });
+    ratingScale.append(button);
+  });
+  ratingPanel.append(ratingQuestion,ratingScale,ratingStatus);
+  const sync=()=>{
+    const memory=getAssistantMemory();
+    const isSaved=(memory.saved||[]).includes(normalized.title);
+    const isWatched=(memory.watched||[]).includes(normalized.title);
+    const userRating=Number(memory.ratings?.[normalized.title]||0);
+    save.classList.toggle('is-active',isSaved);
+    watched.classList.toggle('is-active',isWatched);
+    ratingPanel.hidden=!isWatched;
+    ratingScale.querySelectorAll('button').forEach((button,index)=>button.classList.toggle('is-active',index+1===userRating));
+    ratingStatus.textContent=userRating?`Your rating: ${userRating}/10`:'';
+  };
   save.addEventListener('click',()=>{const next=getAssistantMemory();const set=new Set(next.saved||[]);set.has(normalized.title)?set.delete(normalized.title):set.add(normalized.title);next.saved=[...set];setAssistantMemory(next);sync();});
   watched.addEventListener('click',()=>{const next=getAssistantMemory();const set=new Set(next.watched||[]);set.has(normalized.title)?set.delete(normalized.title):set.add(normalized.title);next.watched=[...set];setAssistantMemory(next);sync();});
   trailer.addEventListener('click',()=>openTrailer(normalized));
-  actions.append(save,watched,trailer); detail.append(title,meta,storyLabel,overview,ratings,actions); content.append(detail); message.textContent=''; sync(); trailerDialog.showModal();
+  actions.append(save,watched,trailer); detail.append(title,meta,storyLabel,overview,ratings,actions,ratingPanel); content.append(detail); message.textContent=''; sync(); trailerDialog.showModal();
 };
 const createAssistantCard=rawMovie=>{
   const movie=normalizeMovie(rawMovie);
