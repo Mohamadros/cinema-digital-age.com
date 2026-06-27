@@ -1,7 +1,7 @@
 +++
 title = "Dogville"
 date = 2026-06-27T20:00:00+02:00
-poster = "images/journal-dogville.svg"
+poster = "https://image.tmdb.org/t/p/w780/lraVawavIXh5geMlVjpzCw9TGwR.jpg"
 year = "2003"
 rating = 5
 hook = "A moral experiment that turns discomfort into judgment."

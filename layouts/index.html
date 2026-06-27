@@ -82,16 +82,19 @@
     {{ $reviews := $journal.RegularPages.ByDate.Reverse }}
     <div class="criticism-layout" data-journal-grid>
       <div class="featured-review">
-        {{ with index $reviews 0 }}<p class="archive-label">Newest review</p>{{ partial "journal-ticket.html" . }}{{ end }}
+        <p class="archive-label">Newest review</p>
+        {{ with index $reviews 0 }}{{ partial "journal-ticket.html" . }}{{ end }}
       </div>
       <aside class="review-archive reveal" aria-label="Previous film reviews">
         <div class="archive-header"><p class="archive-label">Review archive</p><p>Older reflections, compact and easy to browse.</p></div>
         <div class="archive-list">
           {{ range after 1 $reviews }}
+          {{ $poster := .Params.poster }}
+          {{ $posterURL := cond (hasPrefix $poster "http") $poster ($poster | relURL) }}
           <a class="archive-item" href="{{ .RelPermalink }}" data-journal-entry data-category="{{ delimit (apply .Params.categories "urlize" ".") " " }}" data-search="{{ lower (printf "%s %s %s %s" .Title .Summary .Params.hook (delimit .Params.tags " ")) }}">
-            <span class="archive-title">{{ .Title }}</span>
-            <span class="archive-hook">{{ with .Params.hook }}{{ . }}{{ else }}{{ .Summary }}{{ end }}</span>
-            <span class="archive-rating" aria-label="{{ .Params.rating }} out of 5 stars">{{ strings.Repeat .Params.rating "★" }}{{ strings.Repeat (sub 5 .Params.rating) "☆" }}</span>
+            <img src="{{ $posterURL }}" alt="Movie poster for {{ .Title }}" loading="lazy" onerror="this.onerror=null;this.src='{{ "images/movie-poster-fallback.svg" | relURL }}';">
+            <span class="archive-copy"><span class="archive-title">{{ .Title }}</span><span class="archive-hook">{{ with .Params.hook }}{{ . }}{{ else }}{{ .Summary }}{{ end }}</span><span class="archive-rating" aria-label="{{ .Params.rating }} out of 5 stars">{{ strings.Repeat .Params.rating "★" }}{{ strings.Repeat (sub 5 .Params.rating) "☆" }}</span></span>
+            <span class="archive-arrow" aria-hidden="true">›</span>
           </a>
           {{ end }}
         </div>

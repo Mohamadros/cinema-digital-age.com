@@ -1,7 +1,7 @@
 +++
 title = "Past Lives"
 date = 2026-02-11T20:00:00+01:00
-poster = "images/journal-past-lives.svg"
+poster = "https://image.tmdb.org/t/p/w780/k3waqVXSnvCZWfJYNtdamTgTtTA.jpg"
 year = "2023"
 rating = 5
 hook = "A quiet wound about the lives we almost lived."
