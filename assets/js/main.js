@@ -702,6 +702,10 @@ const renderPosterWall=movies=>{
   assistantResults.innerHTML='';
   movies.forEach(movie=>assistantResults.appendChild(createAssistantCard(movie)));
 };
+const getStrictAssistantMatches=(movies,answers)=>movies.filter(movie=>{
+  const normalized=normalizeMovie(movie);
+  return movieMatchesAge(normalized,answers.age)&&movieMatchesPlatform(movie,answers.platform);
+});
 const updateMovieWall=async ({scroll=false,different=false}={})=>{
   if(!assistantPanel||!assistantResults||!assistantReason)return;
   const requestId=++assistantRenderRequest;
@@ -725,11 +729,9 @@ const updateMovieWall=async ({scroll=false,different=false}={})=>{
     let candidates;
     try{candidates=await fetchAssistantMovies(answers);}catch{candidates=assistantFallback;}
     if(requestId!==assistantRenderRequest)return;
-    if(!candidates.length)candidates=assistantFallback;
-    const fallbackForCurrentFilters=assistantFallback.filter(movie=>{
-      const normalized=normalizeMovie(movie);
-      return movieMatchesAge(normalized,answers.age)&&movieMatchesPlatform(movie,answers.platform);
-    });
+    const fallbackForCurrentFilters=getStrictAssistantMatches(assistantFallback,answers);
+    candidates=getStrictAssistantMatches(candidates,answers);
+    if(!candidates.length)candidates=fallbackForCurrentFilters;
     if(candidates.length<5){
       const seen=new Set(candidates.map(movie=>normalizeMovie(movie).title));
       candidates=[...candidates,...fallbackForCurrentFilters.filter(movie=>!seen.has(movie.title))];
@@ -742,18 +744,15 @@ const updateMovieWall=async ({scroll=false,different=false}={})=>{
     console.log('Filtered results:', pool);
     console.log('New movie results:', pool);
     renderPosterWall(pool);
-    assistantReason.textContent=exactEnough?assistantExplanation(answers,pool.map(normalizeMovie)):closestAssistantExplanation(answers,pool.map(normalizeMovie));
+    assistantReason.textContent=pool.length?(exactEnough?assistantExplanation(answers,pool.map(normalizeMovie)):closestAssistantExplanation(answers,pool.map(normalizeMovie))):`No strong ${answers.platform} matches found for these filters. Try another genre, age, or platform.`;
   }catch(error){
     if(requestId!==assistantRenderRequest)return;
-    const fallbackForCurrentFilters=assistantFallback.filter(movie=>{
-      const normalized=normalizeMovie(movie);
-      return movieMatchesAge(normalized,answers.age)&&movieMatchesPlatform(movie,answers.platform);
-    });
-    const pool=selectAssistantMovies([],fallbackForCurrentFilters.length?fallbackForCurrentFilters:assistantFallback,{different:true});
+    const fallbackForCurrentFilters=getStrictAssistantMatches(assistantFallback,answers);
+    const pool=selectAssistantMovies([],fallbackForCurrentFilters,{different:true});
     console.log('Assistant filters changed:', answers);
     console.log('New movie results:', pool);
     renderPosterWall(pool);
-    assistantReason.textContent=closestAssistantExplanation(answers,pool.map(normalizeMovie));
+    assistantReason.textContent=pool.length?closestAssistantExplanation(answers,pool.map(normalizeMovie)):`No strong ${answers.platform} matches found for these filters. Try another genre, age, or platform.`;
   }
   if(scroll)assistantPanel.scrollIntoView({behavior:'smooth',block:'start'});
 };
@@ -763,18 +762,14 @@ assistantForm?.addEventListener('submit',async event=>{
   updateMovieWall({scroll:true,different:true});
 });
 assistantForm?.addEventListener('change',event=>{
-  if(event.target.matches('select,input,[data-assistant-filter]'))updateMovieWall({different:true});
+  if(!event.target.matches('select,input,[data-assistant-filter]')||!assistantPanel)return;
+  assistantReason.textContent='Filters changed. Press “Find my movie” to update the poster wall.';
 });
 assistantForm?.addEventListener('input',event=>{
-  if(event.target.matches('select,input,[data-assistant-filter]'))updateMovieWall({different:true});
-});
-const assistantInputs=document.querySelectorAll('[data-assistant-filter], .assistant-filter, #current-mood, #target-mood, #decision-genre, #platform, #watch-time');
-assistantInputs.forEach(input=>{
-  input.addEventListener('change',()=>updateMovieWall({different:true}));
-  input.addEventListener('input',()=>updateMovieWall({different:true}));
+  if(!event.target.matches('select,input,[data-assistant-filter]')||!assistantPanel)return;
+  assistantReason.textContent='Filters changed. Press “Find my movie” to update the poster wall.';
 });
 assistantRefreshButton?.addEventListener('click',()=>updateMovieWall({different:true,scroll:false}));
-if(assistantForm)updateMovieWall();
 document.querySelector('[data-clear-decision-memory]')?.addEventListener('click',()=>{try{localStorage.removeItem(assistantStorageKey);}catch{}updateAssistantMemory();});
 updateAssistantMemory();
 
