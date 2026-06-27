@@ -207,6 +207,7 @@ const fallbackUpcoming = [
 
 const comingResults = document.querySelector('[data-coming-results]');
 const comingStatus = document.querySelector('[data-coming-status]');
+const radarLists = document.querySelector('[data-radar-lists]');
 const genreFilter = document.querySelector('[data-genre-filter]');
 const movieSearch = document.querySelector('[data-movie-search]');
 const dateFilter = document.querySelector('[data-date-filter]');
@@ -219,10 +220,55 @@ let comingMovies = [];
 let comingPage = 0;
 let comingTotalPages = 1;
 let comingLoading = false;
+const radarCreditsCache=new Map();
 
 const fillGenres = genres => { genres.forEach(genre => { const option=document.createElement('option'); option.value=genre.id; option.textContent=genre.name; genreFilter?.append(option); }); };
 const getRadarStore=key=>{try{return JSON.parse(localStorage.getItem(key)||'[]');}catch{return [];}};
 const setRadarStore=(key,value)=>{try{localStorage.setItem(key,JSON.stringify(value));}catch{}};
+const radarMovieByTitle=title=>comingMovies.map(normalizeRadarMovie).find(movie=>movie.title===title);
+const renderRadarLists=()=>{
+  if(!radarLists)return;
+  const watchlist=getRadarStore(radarWatchlistKey);
+  const hidden=getRadarStore(radarHiddenKey);
+  radarLists.replaceChildren();
+  if(!watchlist.length&&!hidden.length){
+    radarLists.hidden=true;
+    return;
+  }
+  radarLists.hidden=false;
+  const makeGroup=(title,items,type)=>{
+    const group=document.createElement('section');
+    group.className='radar-list-group';
+    const heading=document.createElement('h3');
+    heading.textContent=`${title} (${items.length})`;
+    const list=document.createElement('ul');
+    if(!items.length){
+      const empty=document.createElement('li');
+      empty.className='radar-list-empty';
+      empty.textContent='Nothing here yet.';
+      list.append(empty);
+    }
+    items.forEach(item=>{
+      const li=document.createElement('li');
+      const name=document.createElement('span');
+      name.textContent=item;
+      const action=document.createElement('button');
+      action.type='button';
+      action.textContent=type==='hidden'?'Restore':'Remove';
+      action.addEventListener('click',()=>{
+        const key=type==='hidden'?radarHiddenKey:radarWatchlistKey;
+        setRadarStore(key,getRadarStore(key).filter(title=>title!==item));
+        renderRadarLists();
+        showComing(filterRadarMovies(comingMovies));
+      });
+      li.append(name,action);
+      list.append(li);
+    });
+    group.append(heading,list);
+    return group;
+  };
+  radarLists.append(makeGroup('Watchlist',watchlist,'watchlist'),makeGroup('Not interested',hidden,'hidden'));
+};
 const normalizeRadarMovie=rawMovie=>{
   const movie=normalizeMovie(rawMovie);
   const releaseType=rawMovie.releaseType||rawMovie.release_type||'cinema';
@@ -290,6 +336,23 @@ const filterRadarMovies=(movies,filters=getRadarFilters())=>{
     return a.releaseDate.localeCompare(b.releaseDate);
   });
 };
+const hydrateRadarCredits=async (movie,directorNode,actorsNode)=>{
+  if(!movie.id||!token)return;
+  const cacheKey=String(movie.id);
+  try{
+    let credits=radarCreditsCache.get(cacheKey);
+    if(!credits){
+      const data=await tmdb(`/movie/${movie.id}/credits`);
+      const director=data.crew?.find(person=>person.job==='Director')?.name||'Director not announced';
+      const actors=(data.cast||[]).slice(0,3).map(person=>person.name).filter(Boolean).join(', ')||'Main cast not fully announced';
+      credits={director,actors};
+      radarCreditsCache.set(cacheKey,credits);
+    }
+    directorNode.textContent=credits.director;
+    actorsNode.textContent=credits.actors;
+    comingMovies=comingMovies.map(item=>(item.id&&item.id===movie.id)?{...item,director:credits.director,actors:credits.actors}:item);
+  }catch{}
+};
 const createRadarCard=rawMovie=>{
   const movie=normalizeRadarMovie(rawMovie);
   const watchlist=new Set(getRadarStore(radarWatchlistKey));
@@ -316,10 +379,10 @@ const createRadarCard=rawMovie=>{
   synopsis.textContent=movie.overview;
   const signals=document.createElement('dl');
   signals.className='radar-signals';
+  let directorNode;
+  let actorsNode;
   [
     ['Release',movie.releaseDate||'Date TBA'],
-    ['Platform',movie.platform],
-    ['Trailer',movie.trailerAvailable?'Trailer available':'No trailer yet'],
     ['Buzz',movie.buzz],
     ['Director',movie.director],
     ['Main actors',movie.actors]
@@ -327,8 +390,11 @@ const createRadarCard=rawMovie=>{
     const group=document.createElement('div');
     const dt=document.createElement('dt'); dt.textContent=term;
     const dd=document.createElement('dd'); dd.textContent=value;
+    if(term==='Director')directorNode=dd;
+    if(term==='Main actors')actorsNode=dd;
     group.append(dt,dd); signals.append(group);
   });
+  hydrateRadarCredits(movie,directorNode,actorsNode);
   const why=document.createElement('p');
   why.className='radar-why';
   why.innerHTML=`<strong>Why this might be worth watching:</strong> ${movie.why}`;
@@ -340,8 +406,12 @@ const createRadarCard=rawMovie=>{
     const next=new Set(getRadarStore(radarWatchlistKey));
     next.has(movie.title)?next.delete(movie.title):next.add(movie.title);
     setRadarStore(radarWatchlistKey,[...next]);
+    if(next.has(movie.title)){
+      setRadarStore(radarHiddenKey,getRadarStore(radarHiddenKey).filter(title=>title!==movie.title));
+    }
     watch.textContent=next.has(movie.title)?'In Watchlist':'Add to Watchlist';
     watch.classList.toggle('is-active',next.has(movie.title));
+    renderRadarLists();
   });
   watch.classList.toggle('is-active',watchlist.has(movie.title));
   const trailer=document.createElement('button');
@@ -352,6 +422,8 @@ const createRadarCard=rawMovie=>{
   hide.addEventListener('click',()=>{
     const hidden=new Set(getRadarStore(radarHiddenKey));
     hidden.add(movie.title); setRadarStore(radarHiddenKey,[...hidden]);
+    setRadarStore(radarWatchlistKey,getRadarStore(radarWatchlistKey).filter(title=>title!==movie.title));
+    renderRadarLists();
     showComing(filterRadarMovies(comingMovies));
   });
   actions.append(watch,trailer,hide);
@@ -369,6 +441,7 @@ const showComing = (movies, append=false) => {
   const cards=movies.map(createRadarCard);
   preserveComingPosition(() => { if(append)comingResults.append(...cards); else comingResults.replaceChildren(...cards); });
   cards.forEach(card=>card.classList.add('is-visible'));
+  renderRadarLists();
   if(!cards.length){
     comingStatus.textContent='No movies found for this filter. Try changing your options.';
     if(loadMoreButton) loadMoreButton.hidden=true;
@@ -466,7 +539,7 @@ const applyRadarFilters=async ()=>{
 };
 genreFilter?.addEventListener('change',applyRadarFilters);
 dateFilter?.addEventListener('change',applyRadarFilters);
-anticipatedFilter?.addEventListener('change',()=>showComing(filterRadarMovies(comingMovies)));
+anticipatedFilter?.addEventListener('change',applyRadarFilters);
 loadMoreButton?.addEventListener('click',()=>loadComingPage(false));
 let searchTimer;
 movieSearch?.addEventListener('input', () => {
