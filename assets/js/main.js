@@ -228,7 +228,7 @@ const normalizeRadarMovie=rawMovie=>{
   const releaseType=rawMovie.releaseType||rawMovie.release_type||'cinema';
   const platform=rawMovie.platform||rawMovie.platforms?.[0]||(releaseType==='streaming'?'Streaming':'Cinema release');
   const popularity=Number(rawMovie.popularity||0);
-  const buzz=rawMovie.buzz||(popularity>=20?'High':popularity>=5?'Medium':'Low');
+  const buzz=rawMovie.buzz||(popularity>=10?'High':popularity>=3?'Medium':'Low');
   const trailerAvailable=Boolean(rawMovie.trailerAvailable||rawMovie.trailer_available);
   const tag=rawMovie.tag||(trailerAvailable?'Trailer out':buzz==='High'?'Highly anticipated':buzz==='Medium'?'No audience rating yet':'Limited information');
   return {
@@ -274,10 +274,12 @@ const filterRadarMovies=(movies,filters=getRadarFilters())=>{
     const range=radarDateRange(filters.date);
     const releaseDate=movie.releaseDate||movie.release_date||'';
     const dateMatch=!releaseDate||(!range.gte||releaseDate>=range.gte)&&(!range.lte||releaseDate<=range.lte);
+    const buzzMatch=!filters.anticipated||(filters.anticipated==='high'?movie.buzz==='High':buzzRank(movie.buzz)>=2);
     return !hidden.has(movie.title)&&
       (!filters.query||searchable.includes(filters.query))&&
       genreMatch&&
-      dateMatch;
+      dateMatch&&
+      buzzMatch;
   }).sort((a,b)=>{
     if(filters.anticipated==='high')return Number(b.popularity||0)-Number(a.popularity||0)||a.releaseDate.localeCompare(b.releaseDate);
     if(filters.anticipated==='medium'){
@@ -381,8 +383,8 @@ const radarApiMovie=movie=>({
   releaseType:'cinema',
   platform:'Cinema release',
   trailerAvailable:false,
-  buzz:Number(movie.popularity||0)>=20?'High':Number(movie.popularity||0)>=5?'Medium':'Low',
-  tag:Number(movie.popularity||0)>=20?'Highly anticipated':Number(movie.popularity||0)>=5?'No audience rating yet':'Limited information'
+  buzz:Number(movie.popularity||0)>=10?'High':Number(movie.popularity||0)>=3?'Medium':'Low',
+  tag:Number(movie.popularity||0)>=10?'Highly anticipated':Number(movie.popularity||0)>=3?'No audience rating yet':'Limited information'
 });
 const radarDiscoverParams=(filters=getRadarFilters(),page=1)=>{
   const now=new Date();
@@ -391,7 +393,7 @@ const radarDiscoverParams=(filters=getRadarFilters(),page=1)=>{
     'primary_release_date.gte':range.gte,
     region:'DE',
     with_release_type:'2|3|4',
-    sort_by:'primary_release_date.asc',
+    sort_by:filters.anticipated?'popularity.desc':'primary_release_date.asc',
     include_adult:'false',
     page:String(page)
   };
@@ -450,9 +452,14 @@ const mergeRadarMovies=movies=>{
 };
 const applyRadarFilters=async ()=>{
   if(token){
+    const filters=getRadarFilters();
     await loadComingPage(true);
     await loadComingPage(false);
     await loadComingPage(false);
+    if(filters.anticipated){
+      await loadComingPage(false);
+      await loadComingPage(false);
+    }
     return;
   }
   showComing(filterRadarMovies(comingMovies));
