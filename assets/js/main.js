@@ -494,7 +494,27 @@ const assistantPosterPaths={
   'The Grand Budapest Hotel':'/eWdyYQreja6JGCzqHWXpWHDrrPo.jpg',
   'Parasite':'/7IiTTgloJzvGI1TAYymCfbfl3vT.jpg',
   'Your Name':'/q719jXXEzOoYaps6babgKnONONX.jpg',
-  'The Apartment':'/hhSRt1KKfRT0yEhEtRW3qp31JFU.jpg'
+  'The Apartment':'/hhSRt1KKfRT0yEhEtRW3qp31JFU.jpg',
+  'Paddington 2':'/1OJ9vkD5xPt3skC6KguyXAgagRZ.jpg',
+  'Sing Street':'/sUWpVlrvzU2SJbnVZqIeKulPKwk.jpg',
+  'Amélie':'/nSxDa3M9aMvGVLoItzWTepQ5h5d.jpg',
+  'Chef':'/hyp8EXDmO4dSC8V6Q5jU7gD1kcg.jpg',
+  'The Secret Life of Walter Mitty':'/iAo1hlzsPV9XpYcLQp6Ud065tGO.jpg',
+  'Soul':'/6jmppcaubzLF8wkXM36ganVISCo.jpg',
+  'The Intouchables':'/1QU7HKgsQbGpzsJbJK4pAVQV9F5.jpg',
+  'Little Miss Sunshine':'/niNdhTpPHSgw22tK0PLjQMV640v.jpg',
+  'Billy Elliot':'/mYtqgWCJiXpDeZwjVcC3OQGD8IR.jpg',
+  'Good Will Hunting':'/z2FnLKpFi1HPO7BEJxdkv6hpJSU.jpg',
+  'Remember the Titans':'/825ohvC4wZ3gCuncCaqkWeQnK8h.jpg',
+  'Hidden Figures':'/9lfz2W2uGjyow3am00rsPJ8iOyq.jpg',
+  'Moneyball':'/4yIQq1e6iOcaZ5rLDG3lZBP3j7a.jpg',
+  "The King's Speech":'/pVNKXVQFukBaCz6ML7GH3kiPlQP.jpg',
+  'School of Rock':'/zXLXaepIBvFVLU25DH3wv4IPSbe.jpg',
+  'Rudy':'/fAbfTCRpjHe2rprXBly55KL1dL9.jpg',
+  'October Sky':'/umWrXCIWdcYPf764ruvMRCpG3cA.jpg',
+  'The Truman Show':'/vuza0WqY239yBXOadKlGwJsZJFE.jpg',
+  'Mission: Impossible - Fallout':'/AkJQpZp9WoNdj7pLYSj1L0RcMMN.jpg',
+  'The Fabelmans':'/h7llKkqkkJtJrTOaDLuVeUYDQ7I.jpg'
 };
 const assistantPosterImage=title=>assistantPosterPaths[title]?`${imageBase}${assistantPosterPaths[title]}`:assistantPosterFallback(title);
 const assistantFallback=[
@@ -521,7 +541,27 @@ const assistantFallback=[
   {title:'Everything Everywhere All at Once',year:'2022',runtime:140,rating:7.8,genreIds:[878,28,35],platforms:['Prime Video','Cinema'],moods:['excited','thoughtful','moved','energized'],age:'new',overview:'A multiverse adventure turns family conflict into wild, emotional, inventive cinema.',genre:'Sci-fi · Action'},
   {title:'The Grand Budapest Hotel',year:'2014',runtime:100,rating:8.1,genreIds:[35,18],platforms:['Disney+','Amazon Prime Video'],moods:['happy','nostalgic','relaxed'],age:'modern',overview:'A precise, playful hotel adventure wrapped in memory, style, and melancholy.',genre:'Comedy · Drama'},
   {title:'Parasite',year:'2019',runtime:132,rating:8.5,genreIds:[18,53,35],platforms:['Prime Video','Cinema'],moods:['thoughtful','stressed','excited'],age:'new',overview:'A tense social satire where class, space, and survival collide with unforgettable precision.',genre:'Thriller · Drama'},
-  {title:'Your Name',year:'2016',runtime:106,rating:8.4,genreIds:[16,10749,18],platforms:['Netflix','Amazon Prime Video'],moods:['romantic','nostalgic','moved','curious'],age:'modern',overview:'Two teenagers mysteriously connected across distance and time search for each other.',genre:'Animation · Romance'}
+  {title:'Your Name',year:'2016',runtime:106,rating:8.4,genreIds:[16,10749,18],platforms:['Netflix','Amazon Prime Video'],moods:['romantic','nostalgic','moved','curious'],age:'modern',overview:'Two teenagers mysteriously connected across distance and time search for each other.',genre:'Animation · Romance'},
+  {title:'Paddington 2',year:'2017',runtime:104,rating:7.8,genreIds:[35,16,10751],platforms:['Netflix','Prime Video','Disney+'],moods:['happy','relaxed','inspired'],age:'modern',overview:'A generous bear turns prison, family, and community into a story about kindness and joy.',genre:'Comedy · Family'},
+  {title:'Sing Street',year:'2016',runtime:106,rating:7.9,genreIds:[35,18,10402],platforms:['Netflix','Prime Video'],moods:['happy','inspired','energized'],age:'modern',overview:'A teenager starts a band, finds confidence, and uses music to imagine a bigger future.',genre:'Music · Comedy'},
+  {title:'Amélie',year:'2001',runtime:122,rating:8.3,genreIds:[35,10749],platforms:['Prime Video','My own watchlist'],moods:['happy','romantic','relaxed'],age:'modern',overview:'A shy Parisian woman secretly improves other people’s lives and discovers her own courage.',genre:'Comedy · Romance'},
+  {title:'Chef',year:'2014',runtime:114,rating:7.3,genreIds:[35,18],platforms:['Netflix','Prime Video'],moods:['happy','relaxed','inspired'],age:'modern',overview:'A chef rebuilds his creativity and family connection through food, travel, and friendship.',genre:'Comedy · Drama'},
+  {title:'The Secret Life of Walter Mitty',year:'2013',runtime:114,rating:7.3,genreIds:[12,35,18],platforms:['Disney+','Prime Video'],moods:['lonely','inspired','happy'],age:'modern',overview:'A quiet dreamer leaves routine behind and finds courage through a life-changing journey.',genre:'Adventure · Drama'},
+  {title:'Soul',year:'2020',runtime:101,rating:8.0,genreIds:[16,35,18],platforms:['Disney+'],moods:['thoughtful','happy','inspired','moved'],age:'new',overview:'A musician learns that purpose can be found in ordinary moments, not only achievement.',genre:'Animation · Drama'},
+  {title:'The Intouchables',year:'2011',runtime:112,rating:8.5,genreIds:[18,35],platforms:['Netflix','Prime Video'],moods:['happy','inspired','moved'],age:'modern',overview:'An unlikely friendship brings humor, dignity, and new possibility to two very different lives.',genre:'Comedy · Drama'},
+  {title:'Little Miss Sunshine',year:'2006',runtime:102,rating:7.8,genreIds:[35,18],platforms:['Prime Video','Netflix'],moods:['happy','inspired','moved'],age:'modern',overview:'A chaotic family road trip becomes a warm reminder that imperfect people can still support each other.',genre:'Comedy · Drama'},
+  {title:'Billy Elliot',year:'2000',runtime:110,rating:7.7,genreIds:[18,35,10402],platforms:['Prime Video'],moods:['inspired','happy','moved'],age:'modern',overview:'A working-class boy discovers ballet and fights for a future larger than expectations allow.',genre:'Drama · Music'},
+  {title:'Good Will Hunting',year:'1997',runtime:127,rating:8.3,genreIds:[18],platforms:['Netflix','Prime Video'],moods:['inspired','moved','thoughtful'],age:'old',overview:'A gifted young man learns that intelligence means little without trust, healing, and choice.',genre:'Drama'},
+  {title:'Remember the Titans',year:'2000',runtime:113,rating:7.8,genreIds:[18],platforms:['Disney+','Prime Video'],moods:['inspired','energized','moved'],age:'modern',overview:'A football team becomes a story of leadership, unity, and people changing through pressure.',genre:'Sports · Drama'},
+  {title:'Hidden Figures',year:'2016',runtime:127,rating:7.8,genreIds:[18,36],platforms:['Disney+','Prime Video'],moods:['inspired','thoughtful','moved'],age:'modern',overview:'Brilliant mathematicians push through prejudice to help change the future of space travel.',genre:'History · Drama'},
+  {title:'Moneyball',year:'2011',runtime:134,rating:7.6,genreIds:[18],platforms:['Netflix','Prime Video'],moods:['inspired','thoughtful','energized'],age:'modern',overview:'A baseball manager challenges tradition by trusting new ideas and building differently.',genre:'Sports · Drama'},
+  {title:"The King's Speech",year:'2010',runtime:118,rating:8.0,genreIds:[18,36],platforms:['Prime Video','Netflix'],moods:['inspired','moved'],age:'modern',overview:'A reluctant king faces fear and finds his voice through trust, patience, and discipline.',genre:'History · Drama'},
+  {title:'School of Rock',year:'2003',runtime:110,rating:7.2,genreIds:[35,10402],platforms:['Netflix','Prime Video'],moods:['happy','energized','inspired'],age:'modern',overview:'A failed musician teaches kids confidence, teamwork, and joyful rebellion through rock music.',genre:'Comedy · Music'},
+  {title:'Rudy',year:'1993',runtime:114,rating:7.5,genreIds:[18],platforms:['Prime Video'],moods:['inspired','energized','moved'],age:'old',overview:'An undersized dreamer refuses to let rejection define his place on the field.',genre:'Sports · Drama'},
+  {title:'October Sky',year:'1999',runtime:108,rating:7.8,genreIds:[18,10751],platforms:['Disney+','Prime Video'],moods:['inspired','happy','moved'],age:'old',overview:'A coal-town student follows science, rockets, and hope toward a future he can choose.',genre:'Family · Drama'},
+  {title:'The Truman Show',year:'1998',runtime:103,rating:8.2,genreIds:[35,18],platforms:['Netflix','Prime Video'],moods:['curious','inspired','thoughtful'],age:'old',overview:'A man questions the reality built around him and chooses freedom over comfortable illusion.',genre:'Comedy · Drama'},
+  {title:'Mission: Impossible - Fallout',year:'2018',runtime:147,rating:7.4,genreIds:[28,12,53],platforms:['Prime Video','Netflix'],moods:['energized','excited','inspired'],age:'new',overview:'A high-risk mission turns precision, loyalty, and momentum into pure cinematic energy.',genre:'Action · Thriller'},
+  {title:'The Fabelmans',year:'2022',runtime:151,rating:7.6,genreIds:[18],platforms:['Prime Video'],moods:['inspired','nostalgic','moved'],age:'new',overview:'A young filmmaker discovers how cinema transforms family memory, pain, and imagination.',genre:'Drama'}
 ].map(movie=>({...movie,release_date:`${movie.year}-01-01`,poster:assistantPosterImage(movie.title),trailerQuery:`${movie.title} official trailer`}));
 
 const defaultAssistantMemory=()=>({ratings:{},saved:[],watched:[]});
@@ -572,10 +612,89 @@ const movieMatchesTime=(movie,time)=>{
   if(time==='long')return runtime>140;
   return true;
 };
+const assistantMoodProfiles={
+  happy:{
+    genres:[35,16,10751,12],
+    include:['joy','funny','comedy','kindness','friendship','family','warm','playful','adventure','uplifting','optimistic','celebration','music','colorful','charming'],
+    avoid:['grief','death','murder','war','trauma','bleak','revenge','torture','horror','serial killer'],
+    bridge:{sad:['healing','family','friendship','hope','kindness'],lonely:['friendship','community','connection','family'],stressed:['gentle','funny','comfort','warm']}
+  },
+  inspired:{
+    genres:[18,12,28,878,36,99],
+    include:['hope','dream','survive','courage','underdog','mission','journey','future','hero','persistence','ambition','discover','training','challenge','overcome','vision','purpose','achievement'],
+    avoid:['hopeless','despair','nihilistic','torture','slasher'],
+    bridge:{sad:['hope','healing','overcome','family'],lonely:['journey','connection','self-discovery','purpose'],stressed:['focus','discipline','training','achievement']}
+  },
+  relaxed:{
+    genres:[16,35,10751,99,12],
+    include:['gentle','peaceful','nature','comfort','healing','family','warm','quiet','simple','friendship','home','beautiful','calm','food'],
+    avoid:['horror','violent','murder','terror','war','crime','nightmare','revenge','explosive'],
+    bridge:{stressed:['gentle','comfort','peaceful','healing'],sad:['warm','family','healing'],lonely:['friendship','home','connection']}
+  },
+  moved:{
+    genres:[18,10749,16,36],
+    include:['family','healing','loss','memory','relationship','tender','emotional','father','mother','daughter','son','love','forgiveness','sacrifice'],
+    avoid:['slasher','gross-out','torture'],
+    bridge:{sad:['healing','memory','family','forgiveness'],lonely:['relationship','connection','tender'],thoughtful:['memory','identity','meaning']}
+  },
+  energized:{
+    genres:[28,12,35,18,10402],
+    include:['action','mission','race','fight','adventure','music','training','competition','chase','escape','spectacle','battle','energy','momentum','team'],
+    avoid:['slow','quiet','meditation','grief'],
+    bridge:{stressed:['focus','mission','training'],sad:['comeback','team','victory'],lonely:['team','friendship','adventure']}
+  },
+  romantic:{
+    genres:[10749,18,35],
+    include:['love','romance','relationship','heart','couple','wedding','chance','together','intimacy','date','chemistry','affection'],
+    avoid:['murder','war','monster','apocalypse','torture'],
+    bridge:{lonely:['connection','relationship','chance','together'],sad:['healing','love','tender'],happy:['romance','celebration','chemistry']}
+  },
+  curious:{
+    genres:[878,99,18,53,36],
+    include:['mystery','truth','identity','time','future','question','secret','consciousness','language','society','human','discover','experiment','unknown','investigation'],
+    avoid:['gross-out','empty spectacle'],
+    bridge:{thoughtful:['identity','truth','question','meaning'],stressed:['puzzle','investigation','discover'],lonely:['identity','connection','unknown']}
+  }
+};
+const currentMoodAvoid={
+  sad:['hopeless','despair','bleak','trauma','grief-heavy','suicide'],
+  lonely:['isolation','alienation','abandonment','hopeless'],
+  stressed:['horror','terror','violent','murder','crime','nightmare','torture','chaos'],
+  happy:['bleak','trauma','nihilistic'],
+  thoughtful:[],
+  excited:['slow','static']
+};
+const normalizeAssistantText=movie=>`${movie.title||''} ${movie.overview||''} ${movie.genre||''}`.toLowerCase();
+const hasAssistantKeyword=(text,keyword)=>text.includes(String(keyword).toLowerCase());
+const assistantKeywordScore=(text,keywords=[],weight=1)=>keywords.reduce((score,keyword)=>score+(hasAssistantKeyword(text,keyword)?weight:0),0);
+const getAssistantTargetProfile=answers=>assistantMoodProfiles[answers.targetMood]||{genres:[],include:[],avoid:[],bridge:{}};
+const moodTransitionScore=(movie,answers={})=>{
+  const normalized=normalizeMovie(movie);
+  const text=normalizeAssistantText(normalized);
+  const genreIds=normalized.genreIds||[];
+  const moods=movie.moods||[];
+  const profile=getAssistantTargetProfile(answers);
+  const bridgeWords=profile.bridge?.[answers.currentMood]||[];
+  const currentAvoid=currentMoodAvoid[answers.currentMood]||[];
+  let score=0;
+  if(moods.includes(answers.targetMood))score+=14;
+  if(moods.includes(answers.currentMood)&&answers.currentMood!==answers.targetMood)score+=2;
+  score+=assistantKeywordScore(text,profile.include,2.1);
+  score+=assistantKeywordScore(text,bridgeWords,2.8);
+  score+=profile.genres.reduce((total,genreId)=>total+(genreIds.includes(genreId)?2.4:0),0);
+  score-=assistantKeywordScore(text,profile.avoid,4);
+  score-=assistantKeywordScore(text,currentAvoid,3.5);
+  if(['sad','lonely','stressed'].includes(answers.currentMood)&&['happy','inspired','relaxed','energized'].includes(answers.targetMood)){
+    if(moods.includes('stressed'))score-=3.5;
+    if(moods.includes('lonely')&&!['romantic','moved'].includes(answers.targetMood))score-=2;
+    if(moods.includes('sad')&&answers.targetMood==='happy')score-=3;
+  }
+  return score;
+};
 const movieMatchesMood=(movie,answers)=>{
   const moods=movie.moods||[];
-  if(!moods.length)return false;
-  return moods.includes(answers.currentMood)||moods.includes(answers.targetMood);
+  if(!moods.length)return moodTransitionScore(movie,answers)>=7;
+  return moods.includes(answers.targetMood)||moodTransitionScore(movie,answers)>=8;
 };
 const inferAssistantMoods=movie=>{
   const genreIds=movie.genreIds||movie.genre_ids||[];
@@ -587,9 +706,12 @@ const inferAssistantMoods=movie=>{
   if(genreIds.includes(878)||genreIds.includes(99)||genreIds.includes(36))moods.add('thoughtful').add('curious');
   if(genreIds.includes(28)||genreIds.includes(12))moods.add('excited').add('energized');
   if(genreIds.includes(53)||genreIds.includes(27)||genreIds.includes(80))moods.add('stressed').add('excited');
-  if(/\b(love|romance|relationship|heart|wedding)\b/.test(text))moods.add('romantic');
-  if(/\b(lonely|alone|isolation|connection|friendship|family)\b/.test(text))moods.add('lonely').add('moved');
-  if(/\b(dream|hope|survive|journey|future|mission|hero)\b/.test(text))moods.add('inspired');
+  if(/\b(joy|funny|comedy|kindness|friendship|family|warm|playful|uplifting|celebration)\b/.test(text))moods.add('happy');
+  if(/\b(gentle|peaceful|nature|comfort|healing|quiet|simple|home|food)\b/.test(text))moods.add('relaxed');
+  if(/\b(love|romance|relationship|heart|wedding|couple|chemistry|together)\b/.test(text))moods.add('romantic');
+  if(/\b(lonely|alone|isolation|connection|friendship|family|self-discovery)\b/.test(text))moods.add('lonely').add('moved');
+  if(/\b(dream|hope|survive|journey|future|mission|hero|courage|underdog|persistence|overcome|training|achievement|ambition)\b/.test(text))moods.add('inspired');
+  if(/\b(chase|race|fight|battle|escape|competition|team|music|momentum)\b/.test(text))moods.add('energized');
   if(/\b(memory|past|childhood|home|return)\b/.test(text))moods.add('nostalgic');
   if(/\b(mystery|secret|question|truth|identity)\b/.test(text))moods.add('curious').add('thoughtful');
   return [...moods];
@@ -609,8 +731,7 @@ const scoreAssistantMovie=(movie,answers,memory)=>{
   if(movieMatchesTime(movie,answers.time))score+=2;
   if(movieMatchesAge(movie,answers.age))score+=1.5;
   if(movieMatchesPlatform(movie,answers.platform))score+=4;
-  if((movie.moods||[]).includes(answers.currentMood))score+=4;
-  if((movie.moods||[]).includes(answers.targetMood))score+=7;
+  score+=moodTransitionScore(movie,answers);
   const ratingBoost=Number(memory.ratings?.[movie.title]||0);
   if(ratingBoost>=4)score+=1.8;
   if((memory.saved||[]).includes(movie.title))score+=.5;
@@ -622,11 +743,11 @@ const assistantExplanation=(answers,movies)=>{
   const titles=movies.map(movie=>movie.title).join(', ');
   const memory=getAssistantMemory();
   const topRated=Object.entries(memory.ratings||{}).filter(([,score])=>Number(score)>=4).map(([title])=>title)[0];
-  return `You have ${answers.time==='any'?'flexible time':answers.time.replace('medium','100–140 minutes').replace('short','under 100 minutes').replace('long','more than 140 minutes')}, you want to feel ${answers.targetMood}, and you chose ${genreLabel}. ${topRated?`Because you rated “${topRated}” highly, similar films receive extra weight. `:''}Best choices: ${titles}.`;
+  return `Mood path: ${answers.currentMood} → ${answers.targetMood}. These films are ranked to move you toward ${answers.targetMood}, using ${genreLabel}, your time choice, age preference, and platform. ${topRated?`Because you rated “${topRated}” highly, similar films receive extra weight. `:''}Best choices: ${titles}.`;
 };
 const closestAssistantExplanation=(answers,movies)=>{
   const titles=movies.map(movie=>movie.title).join(', ');
-  return `Closest matches for your mood: ${titles}. Some filters were relaxed so the wall always stays useful.`;
+  return `Closest mood path: ${answers.currentMood} → ${answers.targetMood}. Some filters were relaxed, but these are still the strongest available films for improving the mood: ${titles}.`;
 };
 const fetchAssistantMovies=async answers=>{
   if(!token)throw new Error('TMDB token not configured');
