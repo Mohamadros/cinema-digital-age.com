@@ -644,14 +644,75 @@ const setAssistantMemory=memory=>{
   try{localStorage.setItem(assistantStorageKey,JSON.stringify(memory));}catch{}
   updateAssistantMemory();
 };
+const findAssistantMovieByTitle=title=>{
+  const normalizedTitle=String(title||'').toLowerCase();
+  return assistantFallback.find(movie=>movie.title.toLowerCase()===normalizedTitle)||
+    {title,year:'TBA',rating:0,genre:'Film',overview:'Saved from your movie memory. Run the assistant again to refresh full details.',poster:assistantPosterImage(title),trailerQuery:`${title} official trailer`};
+};
+const removeAssistantMemoryItem=(type,title)=>{
+  const next=getAssistantMemory();
+  if(type==='ratings'){
+    next.ratings={...(next.ratings||{})};
+    delete next.ratings[title];
+  }else{
+    next[type]=(next[type]||[]).filter(item=>item!==title);
+  }
+  setAssistantMemory(next);
+};
+const createMemoryListItem=(title,{type,rating}={})=>{
+  const item=document.createElement('li');
+  item.className='taste-memory-item';
+  const titleButton=document.createElement('button');
+  titleButton.type='button';
+  titleButton.className='taste-memory-title';
+  titleButton.textContent=title;
+  titleButton.addEventListener('click',()=>openMovieDetails(findAssistantMovieByTitle(title)));
+  const meta=document.createElement('span');
+  meta.className='taste-memory-meta';
+  meta.textContent=rating?`${rating}/10`:(type==='watched'?'Watched':'Saved');
+  const remove=document.createElement('button');
+  remove.type='button';
+  remove.className='taste-memory-remove';
+  remove.textContent='Remove';
+  remove.addEventListener('click',()=>removeAssistantMemoryItem(type,title));
+  item.append(titleButton,meta,remove);
+  return item;
+};
+const createMemoryGroup=(label,items,type,ratings={})=>{
+  const section=document.createElement('section');
+  section.className='taste-memory-group';
+  const heading=document.createElement('h4');
+  heading.textContent=`${label} (${items.length})`;
+  const list=document.createElement('ul');
+  if(items.length){
+    items.forEach(title=>list.append(createMemoryListItem(title,{type,rating:ratings[title]})));
+  }else{
+    const empty=document.createElement('li');
+    empty.className='taste-memory-empty';
+    empty.textContent=`No ${label.toLowerCase()} yet.`;
+    list.append(empty);
+  }
+  section.append(heading,list);
+  return section;
+};
 const updateAssistantMemory=()=>{
   if(!assistantMemory)return;
   const memory=getAssistantMemory();
   const ratings=Object.entries(memory.ratings||{}).filter(([,score])=>Number(score)>0).sort((a,b)=>b[1]-a[1]);
-  const saved=(memory.saved||[]).length; const watched=(memory.watched||[]).length;
-  if(!ratings.length&&!saved&&!watched){assistantMemory.textContent='Rate or save films and this assistant will start explaining recommendations based on your previous choices.';return;}
+  const saved=[...(memory.saved||[])];
+  const watched=[...(memory.watched||[])];
+  assistantMemory.replaceChildren();
+  if(!ratings.length&&!saved.length&&!watched.length){assistantMemory.textContent='Rate or save films and this assistant will start explaining recommendations based on your previous choices.';return;}
   const favorite=ratings[0]?.[0];
-  assistantMemory.textContent=`Memory active: ${ratings.length} rated, ${saved} saved, ${watched} watched${favorite?`. You rated “${favorite}” highly, so similar choices get a small boost.`:'.'}`;
+  const summary=document.createElement('p');
+  summary.className='taste-memory-summary';
+  summary.textContent=`Memory active: ${ratings.length} rated, ${saved.length} saved, ${watched.length} watched${favorite?`. Favorite signal: “${favorite}”.`:'.'}`;
+  assistantMemory.append(
+    summary,
+    createMemoryGroup('Saved',saved,'saved'),
+    createMemoryGroup('Watched',watched,'watched',memory.ratings||{}),
+    createMemoryGroup('Rated',ratings.map(([title])=>title),'ratings',memory.ratings||{})
+  );
 };
 function getAssistantFilters(){
   return Object.fromEntries(new FormData(assistantForm).entries());
