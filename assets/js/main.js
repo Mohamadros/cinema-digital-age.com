@@ -220,6 +220,9 @@ let comingMovies = [];
 let comingPage = 0;
 let comingTotalPages = 1;
 let comingLoading = false;
+let radarVisibleCount = 12;
+const radarInitialCount = 12;
+const radarLoadMoreCount = 8;
 const radarCreditsCache=new Map();
 
 const fillGenres = genres => { genres.forEach(genre => { const option=document.createElement('option'); option.value=genre.id; option.textContent=genre.name; genreFilter?.append(option); }); };
@@ -395,9 +398,6 @@ const createRadarCard=rawMovie=>{
     group.append(dt,dd); signals.append(group);
   });
   hydrateRadarCredits(movie,directorNode,actorsNode);
-  const why=document.createElement('p');
-  why.className='radar-why';
-  why.innerHTML=`<strong>Why this might be worth watching:</strong> ${movie.why}`;
   const actions=document.createElement('div');
   actions.className='radar-actions';
   const watch=document.createElement('button');
@@ -427,7 +427,7 @@ const createRadarCard=rawMovie=>{
     showComing(filterRadarMovies(comingMovies));
   });
   actions.append(watch,trailer,hide);
-  copy.append(meta,title,synopsis,signals,why,actions);
+  copy.append(meta,title,synopsis,signals,actions);
   card.append(poster,copy);
   return card;
 };
@@ -438,8 +438,9 @@ const preserveComingPosition = callback => {
   requestAnimationFrame(() => { const after=toolbar?.getBoundingClientRect().top||0; window.scrollBy(0,after-before); });
 };
 const showComing = (movies, append=false) => {
-  const cards=movies.map(createRadarCard);
-  preserveComingPosition(() => { if(append)comingResults.append(...cards); else comingResults.replaceChildren(...cards); });
+  const visibleMovies=movies.slice(0,radarVisibleCount);
+  const cards=visibleMovies.map(createRadarCard);
+  preserveComingPosition(() => { comingResults.replaceChildren(...cards); });
   cards.forEach(card=>card.classList.add('is-visible'));
   renderRadarLists();
   if(!cards.length){
@@ -447,9 +448,10 @@ const showComing = (movies, append=false) => {
     if(loadMoreButton) loadMoreButton.hidden=true;
     return;
   }
-  const total=comingResults.children.length;
-  comingStatus.textContent=`${total} ${total===1?'future film':'future films'} on the radar${comingTotalPages>comingPage?' — more available':''}.`;
-  if(loadMoreButton) loadMoreButton.hidden=!token||comingPage>=comingTotalPages;
+  const total=visibleMovies.length;
+  const available=movies.length;
+  comingStatus.textContent=`Showing ${total} of ${available} ${available===1?'future film':'future films'} on the radar${comingTotalPages>comingPage?' — more available':''}.`;
+  if(loadMoreButton) loadMoreButton.hidden=total>=available&&(!token||comingPage>=comingTotalPages);
 };
 const radarApiMovie=movie=>({
   ...movie,
@@ -474,9 +476,9 @@ const radarDiscoverParams=(filters=getRadarFilters(),page=1)=>{
   if(filters.genre)params.with_genres=filters.genre;
   return params;
 };
-const loadComingPage = async (reset=false) => {
+const loadComingPage = async (reset=false, render=true) => {
   if(comingLoading)return;
-  if(reset){comingPage=0;comingTotalPages=1;comingResults.replaceChildren();}
+  if(reset){comingPage=0;comingTotalPages=1;comingResults.replaceChildren();radarVisibleCount=radarInitialCount;}
   if(comingPage>=comingTotalPages&&comingPage!==0)return;
   comingLoading=true;if(loadMoreButton)loadMoreButton.disabled=true;comingStatus.textContent='Loading future releases…';
   const nextPage=comingPage+1;const filters=getRadarFilters();
@@ -495,7 +497,7 @@ const loadComingPage = async (reset=false) => {
     comingPage=nextPage;comingTotalPages=Math.min(Number(data.total_pages)||1,500);
     const batch=(data.results||[]).map(radarApiMovie);
     comingMovies=reset?batch:[...comingMovies,...batch];
-    showComing(filterRadarMovies(comingMovies));
+    if(render)showComing(filterRadarMovies(comingMovies));
   }catch{comingStatus.textContent='The live movie catalogue could not be reached. Please check the TMDB token.';}
   finally{comingLoading=false;if(loadMoreButton)loadMoreButton.disabled=false;}
 };
@@ -511,7 +513,7 @@ const loadComing = async () => {
       return;
     }catch{}
   }
-  apiNotice.hidden=false;comingMovies=fallbackUpcoming;fillGenres(Object.entries(genreNames).map(([id,name])=>({id,name})));comingPage=1;comingTotalPages=1;showComing(filterRadarMovies(comingMovies));comingStatus.textContent=`${comingMovies.length} radar demonstration films. Connect TMDB for the complete live catalogue and official posters.`;
+  apiNotice.hidden=false;comingMovies=fallbackUpcoming;fillGenres(Object.entries(genreNames).map(([id,name])=>({id,name})));comingPage=1;comingTotalPages=1;radarVisibleCount=radarInitialCount;showComing(filterRadarMovies(comingMovies));comingStatus.textContent=`Showing ${Math.min(radarVisibleCount,comingMovies.length)} of ${comingMovies.length} radar demonstration films. Connect TMDB for the complete live catalogue and official posters.`;
 };
 const mergeRadarMovies=movies=>{
   const seen=new Set(comingMovies.map(movie=>movie.id||movie.title));
@@ -526,6 +528,7 @@ const mergeRadarMovies=movies=>{
 const applyRadarFilters=async ()=>{
   if(token){
     const filters=getRadarFilters();
+    radarVisibleCount=radarInitialCount;
     await loadComingPage(true);
     await loadComingPage(false);
     await loadComingPage(false);
@@ -535,12 +538,21 @@ const applyRadarFilters=async ()=>{
     }
     return;
   }
+  radarVisibleCount=radarInitialCount;
   showComing(filterRadarMovies(comingMovies));
 };
 genreFilter?.addEventListener('change',applyRadarFilters);
 dateFilter?.addEventListener('change',applyRadarFilters);
 anticipatedFilter?.addEventListener('change',applyRadarFilters);
-loadMoreButton?.addEventListener('click',()=>loadComingPage(false));
+loadMoreButton?.addEventListener('click',async()=>{
+  radarVisibleCount+=radarLoadMoreCount;
+  let filtered=filterRadarMovies(comingMovies);
+  while(token&&filtered.length<radarVisibleCount&&comingPage<comingTotalPages&&!comingLoading){
+    await loadComingPage(false,false);
+    filtered=filterRadarMovies(comingMovies);
+  }
+  showComing(filtered);
+});
 let searchTimer;
 movieSearch?.addEventListener('input', () => {
   clearTimeout(searchTimer); searchTimer=setTimeout(() => {
