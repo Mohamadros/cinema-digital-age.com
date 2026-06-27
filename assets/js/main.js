@@ -209,6 +209,7 @@ const comingResults = document.querySelector('[data-coming-results]');
 const comingStatus = document.querySelector('[data-coming-status]');
 const genreFilter = document.querySelector('[data-genre-filter]');
 const movieSearch = document.querySelector('[data-movie-search]');
+const dateFilter = document.querySelector('[data-date-filter]');
 const anticipatedFilter = document.querySelector('[data-anticipated-filter]');
 const loadMoreButton = document.querySelector('[data-load-more]');
 const apiNotice = document.querySelector('[data-api-notice]');
@@ -246,18 +247,36 @@ const buzzRank=buzz=>({Low:1,Medium:2,High:3}[buzz]||1);
 const getRadarFilters=()=>({
   query:movieSearch?.value.trim().toLowerCase()||'',
   genre:genreFilter?.value||'',
+  date:dateFilter?.value||'',
   anticipated:anticipatedFilter?.value||''
 });
+const addDays=(date,days)=>{
+  const next=new Date(date);
+  next.setDate(next.getDate()+days);
+  return next;
+};
+const toISODate=date=>date.toISOString().slice(0,10);
+const radarDateRange=(value)=>{
+  const now=new Date();
+  const today=toISODate(now);
+  if(value==='30')return {gte:today,lte:toISODate(addDays(now,30))};
+  if(value==='90')return {gte:today,lte:toISODate(addDays(now,90))};
+  if(value==='year')return {gte:today,lte:`${now.getFullYear()}-12-31`};
+  if(value==='next-year')return {gte:`${now.getFullYear()+1}-01-01`,lte:`${now.getFullYear()+1}-12-31`};
+  return {gte:today,lte:''};
+};
 const filterRadarMovies=(movies,filters=getRadarFilters())=>{
   const hidden=new Set(getRadarStore(radarHiddenKey));
   return movies.map(normalizeRadarMovie).filter(movie=>{
     const searchable=`${movie.title} ${movie.overview} ${movie.genre} ${movie.director} ${movie.actors}`.toLowerCase();
     const genreMatch=!filters.genre||movie.genreIds.includes(Number(filters.genre));
-    const anticipationMatch=!filters.anticipated||(filters.anticipated==='high'?movie.buzz==='High':buzzRank(movie.buzz)>=2);
+    const range=radarDateRange(filters.date);
+    const releaseDate=movie.releaseDate||movie.release_date||'';
+    const dateMatch=!releaseDate||(!range.gte||releaseDate>=range.gte)&&(!range.lte||releaseDate<=range.lte);
     return !hidden.has(movie.title)&&
       (!filters.query||searchable.includes(filters.query))&&
       genreMatch&&
-      anticipationMatch;
+      dateMatch;
   }).sort((a,b)=>anticipatedFilter?.value?buzzRank(b.buzz)-buzzRank(a.buzz)||a.releaseDate.localeCompare(b.releaseDate):a.releaseDate.localeCompare(b.releaseDate));
 };
 const createRadarCard=rawMovie=>{
@@ -348,23 +367,48 @@ const showComing = (movies, append=false) => {
   comingStatus.textContent=`${total} ${total===1?'future film':'future films'} on the radar${comingTotalPages>comingPage?' — more available':''}.`;
   if(loadMoreButton) loadMoreButton.hidden=!token||comingPage>=comingTotalPages;
 };
+const radarApiMovie=movie=>({
+  ...movie,
+  releaseType:'cinema',
+  platform:'Cinema release',
+  trailerAvailable:false,
+  buzz:movie.popularity>25?'High':movie.popularity>8?'Medium':'Low',
+  tag:movie.popularity>25?'Highly anticipated':'No audience rating yet'
+});
+const radarDiscoverParams=(filters=getRadarFilters(),page=1)=>{
+  const range=radarDateRange(filters.date);
+  const params={
+    'primary_release_date.gte':range.gte,
+    region:'DE',
+    with_release_type:'2|3|4',
+    sort_by:filters.anticipated?'popularity.desc':'primary_release_date.asc',
+    include_adult:'false',
+    page:String(page)
+  };
+  if(range.lte)params['primary_release_date.lte']=range.lte;
+  if(filters.genre)params.with_genres=filters.genre;
+  return params;
+};
 const loadComingPage = async (reset=false) => {
   if(comingLoading)return;
   if(reset){comingPage=0;comingTotalPages=1;comingResults.replaceChildren();}
   if(comingPage>=comingTotalPages&&comingPage!==0)return;
   comingLoading=true;if(loadMoreButton)loadMoreButton.disabled=true;comingStatus.textContent='Loading future releases…';
-  const nextPage=comingPage+1;const today=new Date().toISOString().slice(0,10);
+  const nextPage=comingPage+1;const filters=getRadarFilters();
   try{
-    const data=await tmdb('/discover/movie',{'primary_release_date.gte':today,region:'DE',with_release_type:'2|3|4',sort_by:'primary_release_date.asc',include_adult:'false',page:String(nextPage)});
+    let data;
+    if(filters.query.length>2){
+      data=await tmdb('/search/movie',{query:filters.query,include_adult:'false',region:'DE',page:String(nextPage)});
+      const range=radarDateRange(filters.date);
+      data.results=(data.results||[]).filter(movie=>{
+        const releaseDate=movie.release_date||'';
+        return (!releaseDate||releaseDate>=range.gte)&&(!range.lte||!releaseDate||releaseDate<=range.lte);
+      });
+    }else{
+      data=await tmdb('/discover/movie',radarDiscoverParams(filters,nextPage));
+    }
     comingPage=nextPage;comingTotalPages=Math.min(Number(data.total_pages)||1,500);
-    const batch=data.results.map(movie=>({
-      ...movie,
-      releaseType:'cinema',
-      platform:'Cinema release',
-      trailerAvailable:false,
-      buzz:movie.popularity>25?'High':movie.popularity>8?'Medium':'Low',
-      tag:movie.popularity>25?'Highly anticipated':'No audience rating yet'
-    }));
+    const batch=(data.results||[]).map(radarApiMovie);
     comingMovies=reset?batch:[...comingMovies,...batch];
     showComing(filterRadarMovies(comingMovies));
   }catch{comingStatus.textContent='The live movie catalogue could not be reached. Please check the TMDB token.';}
@@ -395,26 +439,11 @@ const mergeRadarMovies=movies=>{
   comingMovies=[...comingMovies,...fresh];
 };
 const applyRadarFilters=async ()=>{
-  const filters=getRadarFilters();
-  if(token&&filters.query.length>2){
-    try{
-      const today=new Date().toISOString().slice(0,10);
-      const data=await tmdb('/search/movie',{query:filters.query,include_adult:'false',region:'DE',page:'1'});
-      mergeRadarMovies((data.results||[])
-        .filter(movie=>!movie.release_date||movie.release_date>=today)
-        .map(movie=>({
-          ...movie,
-          releaseType:'cinema',
-          platform:'Cinema release',
-          trailerAvailable:false,
-          buzz:movie.popularity>25?'High':movie.popularity>8?'Medium':'Low',
-          tag:movie.popularity>25?'Highly anticipated':'No audience rating yet'
-        })));
-    }catch{}
-  }
-  showComing(filterRadarMovies(comingMovies,filters));
+  if(token){await loadComingPage(true);return;}
+  showComing(filterRadarMovies(comingMovies));
 };
 genreFilter?.addEventListener('change',applyRadarFilters);
+dateFilter?.addEventListener('change',applyRadarFilters);
 anticipatedFilter?.addEventListener('change',applyRadarFilters);
 loadMoreButton?.addEventListener('click',()=>loadComingPage(false));
 let searchTimer;
