@@ -274,13 +274,15 @@ const filterRadarMovies=(movies,filters=getRadarFilters())=>{
     const range=radarDateRange(filters.date);
     const releaseDate=movie.releaseDate||movie.release_date||'';
     const dateMatch=!releaseDate||(!range.gte||releaseDate>=range.gte)&&(!range.lte||releaseDate<=range.lte);
-    const buzzMatch=!filters.anticipated||(filters.anticipated==='high'?movie.buzz==='High':buzzRank(movie.buzz)>=2);
     return !hidden.has(movie.title)&&
       (!filters.query||searchable.includes(filters.query))&&
       genreMatch&&
-      dateMatch&&
-      buzzMatch;
-  }).sort((a,b)=>anticipatedFilter?.value?buzzRank(b.buzz)-buzzRank(a.buzz)||a.releaseDate.localeCompare(b.releaseDate):a.releaseDate.localeCompare(b.releaseDate));
+      dateMatch;
+  }).sort((a,b)=>{
+    if(filters.anticipated==='high')return Number(b.popularity||0)-Number(a.popularity||0)||a.releaseDate.localeCompare(b.releaseDate);
+    if(filters.anticipated==='medium')return buzzRank(b.buzz)-buzzRank(a.buzz)||Number(b.popularity||0)-Number(a.popularity||0)||a.releaseDate.localeCompare(b.releaseDate);
+    return a.releaseDate.localeCompare(b.releaseDate);
+  });
 };
 const createRadarCard=rawMovie=>{
   const movie=normalizeRadarMovie(rawMovie);
@@ -380,7 +382,7 @@ const radarApiMovie=movie=>({
 });
 const radarDiscoverParams=(filters=getRadarFilters(),page=1)=>{
   const now=new Date();
-  const range=filters.anticipated&&!filters.date?{gte:toISODate(now),lte:`${now.getFullYear()+1}-12-31`}:radarDateRange(filters.date);
+  const range=radarDateRange(filters.date);
   const params={
     'primary_release_date.gte':range.gte,
     region:'DE',
@@ -444,9 +446,14 @@ const mergeRadarMovies=movies=>{
 };
 const applyRadarFilters=async ()=>{
   if(token){
+    const filters=getRadarFilters();
     await loadComingPage(true);
     await loadComingPage(false);
     await loadComingPage(false);
+    if(filters.anticipated){
+      await loadComingPage(false);
+      await loadComingPage(false);
+    }
     return;
   }
   showComing(filterRadarMovies(comingMovies));
