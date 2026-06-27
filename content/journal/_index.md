@@ -1,6 +1,6 @@
 +++
-title = "Movie Journal"
-kicker = "Notes from the dark"
-intro = "A personal archive of films, scenes, and ideas—presented as tickets collected over time."
+title = "After the Screening"
+kicker = "Criticism from the dark"
+intro = "Film reviews, personal criticism, and essay-like reflections after the lights come back on."
 weight = 30
 +++

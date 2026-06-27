@@ -4,6 +4,7 @@ date = 2026-03-18T20:00:00+01:00
 poster = "images/journal-dune.svg"
 year = "2024"
 rating = 5
+hook = "When spectacle becomes political destiny."
 favorite_scene = "Paul’s first ride on the sandworm—the moment spectacle becomes a rite of passage."
 recommendation = "Absolutely. See it on the largest screen available."
 categories = ["Reviews"]

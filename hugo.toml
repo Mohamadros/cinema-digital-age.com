@@ -36,7 +36,7 @@ enableRobotsTXT = true
   url = "/#coming-soon"
   weight = 30
 [[menu.main]]
-  name = "Journal"
+  name = "After the Screening"
   url = "/#journal"
   weight = 40
 [[menu.main]]

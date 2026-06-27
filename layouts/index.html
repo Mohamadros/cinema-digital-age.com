@@ -77,12 +77,27 @@
     {{ partial "section-heading.html" $journal }}
     <div class="journal-tools reveal">
       <div class="filter-pills" role="group" aria-label="Filter journal by category"><button class="is-active" data-journal-filter="all" type="button">All entries</button>{{ range site.Taxonomies.categories }}<button data-journal-filter="{{ .Page.Title | urlize }}" type="button">{{ .Page.Title }}</button>{{ end }}</div>
-      <label class="journal-search"><span class="sr-only">Search the movie journal</span><input type="search" data-journal-search placeholder="Search journal…"><span aria-hidden="true">⌕</span></label>
+      <label class="journal-search"><span class="sr-only">Search film criticism</span><input type="search" data-journal-search placeholder="Search criticism…"><span aria-hidden="true">⌕</span></label>
     </div>
-    <div class="ticket-wall" data-journal-grid>
-      {{ range $journal.RegularPages.ByDate.Reverse }}{{ partial "journal-ticket.html" . }}{{ end }}
+    {{ $reviews := $journal.RegularPages.ByDate.Reverse }}
+    <div class="criticism-layout" data-journal-grid>
+      <div class="featured-review">
+        {{ with index $reviews 0 }}<p class="archive-label">Newest review</p>{{ partial "journal-ticket.html" . }}{{ end }}
+      </div>
+      <aside class="review-archive reveal" aria-label="Previous film reviews">
+        <div class="archive-header"><p class="archive-label">Review archive</p><p>Older reflections, compact and easy to browse.</p></div>
+        <div class="archive-list">
+          {{ range after 1 $reviews }}
+          <a class="archive-item" href="{{ .RelPermalink }}" data-journal-entry data-category="{{ delimit (apply .Params.categories "urlize" ".") " " }}" data-search="{{ lower (printf "%s %s %s %s" .Title .Summary .Params.hook (delimit .Params.tags " ")) }}">
+            <span class="archive-title">{{ .Title }}</span>
+            <span class="archive-hook">{{ with .Params.hook }}{{ . }}{{ else }}{{ .Summary }}{{ end }}</span>
+            <span class="archive-rating" aria-label="{{ .Params.rating }} out of 5 stars">{{ strings.Repeat .Params.rating "★" }}{{ strings.Repeat (sub 5 .Params.rating) "☆" }}</span>
+          </a>
+          {{ end }}
+        </div>
+      </aside>
     </div>
-    <p class="empty-state" data-journal-empty hidden>No journal entries match that search.</p>
+    <p class="empty-state" data-journal-empty hidden>No criticism entries match that search.</p>
   </div>
 </section>
 

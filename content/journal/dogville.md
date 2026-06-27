@@ -4,6 +4,7 @@ date = 2026-06-27T20:00:00+02:00
 poster = "images/journal-dogville.svg"
 year = "2003"
 rating = 5
+hook = "A moral experiment that turns discomfort into judgment."
 favorite_scene = "The final moral reversal, when the film turns discomfort into judgment."
 recommendation = "Not for every moviegoer, but unforgettable if you are ready for a challenging film."
 categories = ["Reviews"]
