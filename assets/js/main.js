@@ -95,15 +95,15 @@ const renderMovies = (container, movies, append = false) => {
 };
 
 const moodConfig = {
-  happy: { label: 'Happy', genres: '35,16,12', reason: 'These films amplify joy through humor, friendship, and a sense of possibility.' },
-  sad: { label: 'Sad', genres: '18,10749', reason: 'These emotionally honest stories create space for reflection, release, and empathy.' },
-  lonely: { label: 'Lonely', genres: '18,10749', reason: 'These films explore connection, self-discovery, and meaningful relationships.' },
-  romantic: { label: 'Romantic', genres: '10749,18', reason: 'These films find intimacy in chance encounters, difficult timing, and lasting devotion.' },
-  motivated: { label: 'Motivated', genres: '18,36,12', reason: 'These stories follow persistence, craft, and people becoming larger than their circumstances.' },
-  stressed: { label: 'Stressed', genres: '35,16,99', reason: 'These gentler films offer humor, wonder, and enough breathing room to reset.' },
-  thoughtful: { label: 'Thoughtful', genres: '18,878,99', reason: 'These films reward curiosity and invite questions that continue after the credits.' },
-  excited: { label: 'Excited', genres: '28,12,53', reason: 'These kinetic stories turn anticipation into movement, suspense, and spectacle.' },
-  nostalgic: { label: 'Nostalgic', genres: '18,36,10749', reason: 'These films explore memory, time, home, and the distance between who we were and who we are.' }
+  happy: { label: 'Happy', genres: '35,16,12,10751', target: ['joy','kindness','friendship','funny','warm','playful','family','adventure','hope','uplifting'], avoid: ['grief','death','murder','war','trauma'], reason: 'These films protect a happy mood with warmth, humor, friendship, and low emotional heaviness.' },
+  sad: { label: 'Sad', genres: '18,10749', target: ['grief','loss','memory','father','mother','family','healing','relationship','quiet','emotional','tender'], avoid: ['slasher','explosive','revenge','superhero'], reason: 'These films meet sadness gently: emotional stories that allow reflection, empathy, and release.' },
+  lonely: { label: 'Lonely', genres: '18,10749,878', target: ['alone','lonely','connection','friendship','stranger','city','isolation','relationship','identity','self-discovery'], avoid: ['team','war','battle','heist'], reason: 'These films focus on connection, solitude, and characters trying to be understood.' },
+  romantic: { label: 'Romantic', genres: '10749,18,35', target: ['love','romance','relationship','wedding','couple','heart','chance','together','intimacy'], avoid: ['murder','war','monster','apocalypse'], reason: 'These films are chosen for emotional intimacy, chemistry, and love stories rather than just the romance genre label.' },
+  motivated: { label: 'Motivated', genres: '18,36,12,28', target: ['dream','ambition','fight','survive','training','success','journey','courage','underdog','mission','persistence'], avoid: ['despair','hopeless','grief'], reason: 'These films emphasize drive, discipline, survival, and people pushing past limits.' },
+  stressed: { label: 'Stressed', genres: '35,16,10751,99', target: ['gentle','nature','friendship','family','comfort','funny','warm','simple','healing','peaceful'], avoid: ['horror','murder','terror','nightmare','crime','violent','war'], reason: 'These films avoid harsh intensity and aim for comfort, lightness, and emotional reset.' },
+  thoughtful: { label: 'Thoughtful', genres: '18,878,99,36', target: ['identity','truth','memory','time','future','question','society','human','language','consciousness','mystery'], avoid: ['gross-out','slapstick'], reason: 'These films are selected for ideas that stay with you after the credits: identity, time, society, and meaning.' },
+  excited: { label: 'Excited', genres: '28,12,53,878', target: ['mission','chase','battle','escape','danger','hero','adventure','race','fight','spectacle','explosive'], avoid: ['quiet','slow','meditation'], reason: 'These films convert excitement into movement: action, suspense, spectacle, and momentum.' },
+  nostalgic: { label: 'Nostalgic', genres: '18,36,10749,35', target: ['memory','childhood','home','past','return','summer','family','cinema','old','friend','remember'], avoid: ['future','cyber','apocalypse'], reason: 'These films are chosen for memory, home, childhood, and the feeling of looking back.' }
 };
 
 const moodFallback = {
@@ -120,6 +120,45 @@ const moodFallback = {
 Object.keys(moodFallback).forEach(key => { moodFallback[key] = moodFallback[key].map((m, i) => ({ id: null, title:m[0], year:String(m[1]), rating:m[2], overview:m[3], genre:m[4], genreIds:moodConfig[key].genres.split(',').map(Number), trailerQuery:`${m[0]} official trailer`, poster:posterFallback(m[0]+i) })); });
 
 const moodPanel = document.querySelector('[data-recommendation-panel]');
+const textMatchesAny=(text,words)=>words.some(word=>text.includes(word));
+const scoreMoodMovie=(rawMovie,config)=>{
+  const movie=normalizeMovie(rawMovie);
+  const text=`${movie.title} ${movie.overview} ${movie.genre}`.toLowerCase();
+  const genreIds=movie.genreIds||[];
+  const targetScore=config.target.reduce((score,word)=>score+(text.includes(word)?2.6:0),0);
+  const avoidScore=config.avoid.reduce((score,word)=>score+(text.includes(word)?4.5:0),0);
+  const genreScore=config.genres.split(',').map(Number).reduce((score,id)=>score+(genreIds.includes(id)?2.2:0),0);
+  const ratingScore=Number(movie.rating||0);
+  const posterScore=movie.poster&&!String(movie.poster).startsWith('data:')?1.2:0;
+  const fitBoost=textMatchesAny(text,config.target)?4:0;
+  return ratingScore+genreScore+targetScore+fitBoost+posterScore-avoidScore;
+};
+const fetchMoodMovies=async (key,config)=>{
+  if(!token)throw new Error('TMDB token not configured');
+  const pages=[1,2,3,4,5].map(page=>tmdb('/discover/movie',{
+    with_genres:config.genres,
+    sort_by:page%2?'vote_average.desc':'popularity.desc',
+    'vote_count.gte':'250',
+    include_adult:'false',
+    page:String(page)
+  }).catch(()=>({results:[]})));
+  const seen=new Set();
+  return (await Promise.all(pages))
+    .flatMap(data=>data.results||[])
+    .filter(movie=>movie.poster_path)
+    .filter(movie=>{
+      const key=movie.id||movie.title;
+      if(seen.has(key))return false;
+      seen.add(key);
+      return true;
+    })
+    .map(normalizeMovie)
+    .map(movie=>({movie,score:scoreMoodMovie(movie,config)}))
+    .filter(item=>item.score>8)
+    .sort((a,b)=>b.score-a.score)
+    .slice(0,6)
+    .map(item=>item.movie);
+};
 document.querySelectorAll('[data-mood]').forEach(button => button.addEventListener('click', async () => {
   if (!moodPanel) return;
   const key = button.dataset.mood; const config = moodConfig[key];
@@ -129,12 +168,13 @@ document.querySelectorAll('[data-mood]').forEach(button => button.addEventListen
   moodPanel.querySelector('[data-mood-reason]').textContent = config.reason;
   moodPanel.querySelector('input[name="mood"]').value = config.label;
   const status = moodPanel.querySelector('[data-mood-status]'); const results = moodPanel.querySelector('[data-mood-results]');
-  status.textContent = token ? 'Searching the cinema archive…' : 'Showing curated selections. Add a TMDB token for live discovery.';
+  status.textContent = token ? `Searching for films that fit ${config.label.toLowerCase()} emotionally…` : 'Showing curated mood selections. Add a TMDB token for live discovery.';
   moodPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
   try {
-    const data = await tmdb('/discover/movie', { with_genres: config.genres, sort_by: 'vote_average.desc', 'vote_count.gte': '800', include_adult: 'false', page: String(Math.floor(Math.random() * 3) + 1) });
-    renderMovies(results, data.results.slice(0, 6)); status.textContent = 'Live recommendations from TMDB.';
-  } catch { renderMovies(results, moodFallback[key]); }
+    const movies=await fetchMoodMovies(key,config);
+    renderMovies(results, movies.length?movies:moodFallback[key]);
+    status.textContent = movies.length ? `Matched by mood signals: ${config.target.slice(0,5).join(', ')}.` : 'Showing curated selections because the live catalogue did not return enough emotional matches.';
+  } catch { renderMovies(results, moodFallback[key]); status.textContent='Showing curated selections for this mood.'; }
 }));
 
 const feedbackForm = document.querySelector('[data-feedback-form]');
