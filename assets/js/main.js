@@ -635,17 +635,41 @@ const assistantFallback=[
   {title:'The Fabelmans',year:'2022',runtime:151,rating:7.6,genreIds:[18],platforms:['Prime Video'],moods:['inspired','nostalgic','moved'],age:'new',overview:'A young filmmaker discovers how cinema transforms family memory, pain, and imagination.',genre:'Drama'}
 ].map(movie=>({...movie,release_date:`${movie.year}-01-01`,poster:assistantPosterImage(movie.title),trailerQuery:`${movie.title} official trailer`}));
 
-const defaultAssistantMemory=()=>({ratings:{},saved:[],watched:[]});
+const defaultAssistantMemory=()=>({ratings:{},saved:[],watched:[],movies:{}});
 const getAssistantMemory=()=>{
-  try{return JSON.parse(localStorage.getItem(assistantStorageKey)||'{"ratings":{},"saved":[],"watched":[]}');}
+  try{return {...defaultAssistantMemory(),...JSON.parse(localStorage.getItem(assistantStorageKey)||'{}')};}
   catch{return defaultAssistantMemory();}
 };
 const setAssistantMemory=memory=>{
-  try{localStorage.setItem(assistantStorageKey,JSON.stringify(memory));}catch{}
+  try{localStorage.setItem(assistantStorageKey,JSON.stringify({...defaultAssistantMemory(),...memory}));}catch{}
   updateAssistantMemory();
+};
+const assistantMovieSnapshot=movie=>{
+  const normalized=normalizeMovie(movie);
+  return {
+    title:normalized.title,
+    year:normalized.year,
+    rating:Number(normalized.rating)||0,
+    genre:normalized.genre,
+    genreIds:normalized.genreIds||[],
+    moods:movie.moods||inferAssistantMoods(normalized),
+    platforms:movie.platforms||[],
+    runtime:movie.runtime||0,
+    age:movie.age,
+    overview:normalized.overview,
+    poster:normalized.poster,
+    trailerQuery:normalized.trailerQuery
+  };
+};
+const rememberAssistantMovie=(memory,movie)=>{
+  const snapshot=assistantMovieSnapshot(movie);
+  memory.movies={...(memory.movies||{}),[snapshot.title]:snapshot};
+  return memory;
 };
 const findAssistantMovieByTitle=title=>{
   const normalizedTitle=String(title||'').toLowerCase();
+  const remembered=getAssistantMemory().movies?.[title];
+  if(remembered)return remembered;
   return assistantFallback.find(movie=>movie.title.toLowerCase()===normalizedTitle)||
     {title,year:'TBA',rating:0,genre:'Film',overview:'Saved from your movie memory. Run the assistant again to refresh full details.',poster:assistantPosterImage(title),trailerQuery:`${title} official trailer`};
 };
@@ -656,6 +680,10 @@ const removeAssistantMemoryItem=(type,title)=>{
     delete next.ratings[title];
   }else{
     next[type]=(next[type]||[]).filter(item=>item!==title);
+  }
+  if(!(next.saved||[]).includes(title)&&!(next.watched||[]).includes(title)&&!next.ratings?.[title]){
+    next.movies={...(next.movies||{})};
+    delete next.movies[title];
   }
   setAssistantMemory(next);
 };
@@ -805,12 +833,13 @@ const moodTransitionScore=(movie,answers={})=>{
   const text=normalizeAssistantText(normalized);
   const genreIds=normalized.genreIds||[];
   const moods=movie.moods||[];
+  if(answers.currentMood==='any'&&answers.targetMood==='any')return 0;
   const profile=getAssistantTargetProfile(answers);
   const bridgeWords=profile.bridge?.[answers.currentMood]||[];
   const currentAvoid=currentMoodAvoid[answers.currentMood]||[];
   let score=0;
-  if(moods.includes(answers.targetMood))score+=14;
-  if(moods.includes(answers.currentMood)&&answers.currentMood!==answers.targetMood)score+=2;
+  if(answers.targetMood!=='any'&&moods.includes(answers.targetMood))score+=14;
+  if(answers.currentMood!=='any'&&moods.includes(answers.currentMood)&&answers.currentMood!==answers.targetMood)score+=2;
   score+=assistantKeywordScore(text,profile.include,2.1);
   score+=assistantKeywordScore(text,bridgeWords,2.8);
   score+=profile.genres.reduce((total,genreId)=>total+(genreIds.includes(genreId)?2.4:0),0);
@@ -824,6 +853,7 @@ const moodTransitionScore=(movie,answers={})=>{
   return score;
 };
 const movieMatchesMood=(movie,answers)=>{
+  if(answers.targetMood==='any')return true;
   const moods=movie.moods||[];
   if(!moods.length)return moodTransitionScore(movie,answers)>=7;
   return moods.includes(answers.targetMood)||moodTransitionScore(movie,answers)>=8;
@@ -856,6 +886,55 @@ const enrichAssistantMovie=(rawMovie,platform='')=>{
   movie.age=rawMovie.age;
   return movie;
 };
+const sharedCount=(left=[],right=[])=>{
+  const rightSet=new Set(right);
+  return left.filter(item=>rightSet.has(item)).length;
+};
+const movieSimilarityScore=(candidate,memoryMovie)=>{
+  const candidateMovie=normalizeMovie(candidate);
+  const remembered=normalizeMovie(memoryMovie);
+  const genreOverlap=sharedCount(candidateMovie.genreIds||[],remembered.genreIds||[]);
+  const moodOverlap=sharedCount(candidate.moods||[],memoryMovie.moods||[]);
+  const textMatch=normalizeAssistantText(candidateMovie).includes(String(remembered.title||'').toLowerCase())?1:0;
+  return genreOverlap*1.6+moodOverlap*2.2+textMatch;
+};
+const ratingTasteWeight=rating=>{
+  const score=Number(rating||0);
+  if(score>=9)return 5;
+  if(score>=8)return 3.6;
+  if(score>=7)return 2.2;
+  if(score>=6)return .8;
+  if(score>=5)return 0;
+  if(score>=3)return -2.8;
+  if(score>0)return -4.2;
+  return 0;
+};
+const tasteMemoryScore=(movie,memory)=>{
+  // Taste Memory logic:
+  // 1) A watched movie is stored with genre/mood data.
+  // 2) A 1–10 rating turns that watched movie into a stronger preference signal.
+  // 3) High ratings boost similar genres/moods; low ratings penalize similar genres/moods.
+  // 4) Exact watched titles are penalized so the assistant suggests new choices, not repeats.
+  const watched=new Set(memory.watched||[]);
+  const saved=new Set(memory.saved||[]);
+  const rememberedMovies=memory.movies||{};
+  let score=0;
+  if(watched.has(movie.title))score-=6;
+  if(saved.has(movie.title)&&!watched.has(movie.title))score+=.8;
+  Object.entries(rememberedMovies).forEach(([title,remembered])=>{
+    const similarity=movieSimilarityScore(movie,remembered);
+    if(!similarity)return;
+    const rating=Number(memory.ratings?.[title]||0);
+    if(rating>0){
+      score+=similarity*ratingTasteWeight(rating);
+    }else if(watched.has(title)){
+      score+=similarity*.35;
+    }else if(saved.has(title)){
+      score+=similarity*.18;
+    }
+  });
+  return score;
+};
 const scoreAssistantMovie=(movie,answers,memory)=>{
   let score=Number(movie.rating||movie.vote_average||0);
   const genreIds=movie.genreIds||movie.genre_ids||[];
@@ -864,17 +943,14 @@ const scoreAssistantMovie=(movie,answers,memory)=>{
   if(movieMatchesAge(movie,answers.age))score+=1.5;
   if(movieMatchesPlatform(movie,answers.platform))score+=4;
   score+=moodTransitionScore(movie,answers);
-  const ratingBoost=Number(memory.ratings?.[movie.title]||0);
-  if(ratingBoost>=4)score+=1.8;
-  if((memory.saved||[]).includes(movie.title))score+=.5;
-  if((memory.watched||[]).includes(movie.title))score-=2;
+  score+=tasteMemoryScore(movie,memory);
   return score;
 };
 const assistantExplanation=(answers,movies)=>{
   const genreLabel=answers.genre==='any'?'a surprise genre':(genreNames[answers.genre]||'your selected genre');
   const titles=movies.map(movie=>movie.title).join(', ');
   const memory=getAssistantMemory();
-  const topRated=Object.entries(memory.ratings||{}).filter(([,score])=>Number(score)>=4).map(([title])=>title)[0];
+  const topRated=Object.entries(memory.ratings||{}).filter(([,score])=>Number(score)>=8).map(([title])=>title)[0];
   return `Mood path: ${answers.currentMood} → ${answers.targetMood}. These films are ranked to move you toward ${answers.targetMood}, using ${genreLabel}, your time choice, age preference, and platform. ${topRated?`Because you rated “${topRated}” highly, similar films receive extra weight. `:''}Best choices: ${titles}.`;
 };
 const closestAssistantExplanation=(answers,movies)=>{
@@ -956,6 +1032,7 @@ const openMovieDetails=async movie=>{
     button.setAttribute('aria-label',`Rate ${normalized.title} ${score} out of 10`);
     button.addEventListener('click',()=>{
       const next=getAssistantMemory();
+      rememberAssistantMovie(next,movie);
       next.ratings={...(next.ratings||{}),[normalized.title]:score};
       setAssistantMemory(next);
       sync();
@@ -975,8 +1052,8 @@ const openMovieDetails=async movie=>{
     ratingScale.querySelectorAll('button').forEach((button,index)=>button.classList.toggle('is-active',index+1===userRating));
     ratingStatus.textContent=userRating?`Your rating: ${userRating}/10`:'';
   };
-  save.addEventListener('click',()=>{const next=getAssistantMemory();const set=new Set(next.saved||[]);set.has(normalized.title)?set.delete(normalized.title):set.add(normalized.title);next.saved=[...set];setAssistantMemory(next);sync();});
-  watched.addEventListener('click',()=>{const next=getAssistantMemory();const set=new Set(next.watched||[]);set.has(normalized.title)?set.delete(normalized.title):set.add(normalized.title);next.watched=[...set];setAssistantMemory(next);sync();});
+  save.addEventListener('click',()=>{const next=getAssistantMemory();rememberAssistantMovie(next,movie);const set=new Set(next.saved||[]);set.has(normalized.title)?set.delete(normalized.title):set.add(normalized.title);next.saved=[...set];setAssistantMemory(next);sync();});
+  watched.addEventListener('click',()=>{const next=getAssistantMemory();rememberAssistantMovie(next,movie);const set=new Set(next.watched||[]);set.has(normalized.title)?set.delete(normalized.title):set.add(normalized.title);next.watched=[...set];setAssistantMemory(next);sync();});
   trailer.addEventListener('click',()=>openTrailer(normalized));
   actions.append(save,watched,trailer); detail.append(title,meta,storyLabel,overview,ratings,actions,ratingPanel); content.append(detail); message.textContent=''; sync(); trailerDialog.showModal();
 };
