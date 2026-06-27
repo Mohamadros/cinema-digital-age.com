@@ -517,20 +517,75 @@ const assistantPosterPaths={
   'The Fabelmans':'/h7llKkqkkJtJrTOaDLuVeUYDQ7I.jpg'
 };
 const assistantPosterImage=title=>assistantPosterPaths[title]?`${imageBase}${assistantPosterPaths[title]}`:assistantPosterFallback(title);
-const assistantRatingLinks=title=>{
+const slugForExternalMoviePage=(title,separator='-')=>String(title||'')
+  .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+  .toLowerCase()
+  .replace(/&/g,' and ')
+  .replace(/['’]/g,'')
+  .replace(/[^a-z0-9]+/g,separator)
+  .replace(new RegExp(`^\\${separator}+|\\${separator}+$`,'g'),'');
+const assistantExternalMovieUrls={
+  'Arrival':{imdb:'https://www.imdb.com/title/tt2543164/',rotten:'https://www.rottentomatoes.com/m/arrival_2016',metacritic:'https://www.metacritic.com/movie/arrival/'},
+  'Interstellar':{imdb:'https://www.imdb.com/title/tt0816692/',rotten:'https://www.rottentomatoes.com/m/interstellar_2014',metacritic:'https://www.metacritic.com/movie/interstellar/'},
+  'Her':{imdb:'https://www.imdb.com/title/tt1798709/',rotten:'https://www.rottentomatoes.com/m/her',metacritic:'https://www.metacritic.com/movie/her/'},
+  'The Martian':{imdb:'https://www.imdb.com/title/tt3659388/',rotten:'https://www.rottentomatoes.com/m/the_martian',metacritic:'https://www.metacritic.com/movie/the-martian/'},
+  'Blade Runner 2049':{imdb:'https://www.imdb.com/title/tt1856101/',rotten:'https://www.rottentomatoes.com/m/blade_runner_2049',metacritic:'https://www.metacritic.com/movie/blade-runner-2049/'},
+  'Before Sunrise':{imdb:'https://www.imdb.com/title/tt0112471/',rotten:'https://www.rottentomatoes.com/m/before_sunrise',metacritic:'https://www.metacritic.com/movie/before-sunrise/'},
+  'Whiplash':{imdb:'https://www.imdb.com/title/tt2582802/',rotten:'https://www.rottentomatoes.com/m/whiplash_2014',metacritic:'https://www.metacritic.com/movie/whiplash/'},
+  'Mad Max: Fury Road':{imdb:'https://www.imdb.com/title/tt1392190/',rotten:'https://www.rottentomatoes.com/m/mad_max_fury_road',metacritic:'https://www.metacritic.com/movie/mad-max-fury-road/'},
+  'My Neighbor Totoro':{imdb:'https://www.imdb.com/title/tt0096283/',rotten:'https://www.rottentomatoes.com/m/my_neighbor_totoro',metacritic:'https://www.metacritic.com/movie/my-neighbor-totoro/'},
+  'Lost in Translation':{imdb:'https://www.imdb.com/title/tt0335266/',rotten:'https://www.rottentomatoes.com/m/lost_in_translation',metacritic:'https://www.metacritic.com/movie/lost-in-translation/'},
+  'Spider-Man: Into the Spider-Verse':{imdb:'https://www.imdb.com/title/tt4633694/',rotten:'https://www.rottentomatoes.com/m/spider_man_into_the_spider_verse',metacritic:'https://www.metacritic.com/movie/spider-man-into-the-spider-verse/'},
+  'Cinema Paradiso':{imdb:'https://www.imdb.com/title/tt0095765/',rotten:'https://www.rottentomatoes.com/m/cinema_paradiso',metacritic:'https://www.metacritic.com/movie/cinema-paradiso/'},
+  'The Pursuit of Happyness':{imdb:'https://www.imdb.com/title/tt0454921/',rotten:'https://www.rottentomatoes.com/m/pursuit_of_happyness',metacritic:'https://www.metacritic.com/movie/the-pursuit-of-happyness/'},
+  'Rocky':{imdb:'https://www.imdb.com/title/tt0075148/',rotten:'https://www.rottentomatoes.com/m/rocky',metacritic:'https://www.metacritic.com/movie/rocky/'},
+  'La La Land':{imdb:'https://www.imdb.com/title/tt3783958/',rotten:'https://www.rottentomatoes.com/m/la_la_land',metacritic:'https://www.metacritic.com/movie/la-la-land/'},
+  'About Time':{imdb:'https://www.imdb.com/title/tt2194499/',rotten:'https://www.rottentomatoes.com/m/about_time',metacritic:'https://www.metacritic.com/movie/about-time/'},
+  'Ex Machina':{imdb:'https://www.imdb.com/title/tt0470752/',rotten:'https://www.rottentomatoes.com/m/ex_machina',metacritic:'https://www.metacritic.com/movie/ex-machina/'},
+  'The Social Network':{imdb:'https://www.imdb.com/title/tt1285016/',rotten:'https://www.rottentomatoes.com/m/the_social_network',metacritic:'https://www.metacritic.com/movie/the-social-network/'},
+  'The Dark Knight':{imdb:'https://www.imdb.com/title/tt0468569/',rotten:'https://www.rottentomatoes.com/m/the_dark_knight',metacritic:'https://www.metacritic.com/movie/the-dark-knight/'},
+  'Inside Out':{imdb:'https://www.imdb.com/title/tt2096673/',rotten:'https://www.rottentomatoes.com/m/inside_out_2015',metacritic:'https://www.metacritic.com/movie/inside-out/'},
+  'Everything Everywhere All at Once':{imdb:'https://www.imdb.com/title/tt6710474/',rotten:'https://www.rottentomatoes.com/m/everything_everywhere_all_at_once',metacritic:'https://www.metacritic.com/movie/everything-everywhere-all-at-once/'},
+  'The Grand Budapest Hotel':{imdb:'https://www.imdb.com/title/tt2278388/',rotten:'https://www.rottentomatoes.com/m/the_grand_budapest_hotel',metacritic:'https://www.metacritic.com/movie/the-grand-budapest-hotel/'},
+  'Parasite':{imdb:'https://www.imdb.com/title/tt6751668/',rotten:'https://www.rottentomatoes.com/m/parasite_2019',metacritic:'https://www.metacritic.com/movie/parasite/'},
+  'Your Name':{imdb:'https://www.imdb.com/title/tt5311514/',rotten:'https://www.rottentomatoes.com/m/your_name_2017',metacritic:'https://www.metacritic.com/movie/your-name/'},
+  'The Apartment':{imdb:'https://www.imdb.com/title/tt0053604/',rotten:'https://www.rottentomatoes.com/m/apartment',metacritic:'https://www.metacritic.com/movie/the-apartment/'},
+  'Paddington 2':{imdb:'https://www.imdb.com/title/tt4468740/',rotten:'https://www.rottentomatoes.com/m/paddington_2',metacritic:'https://www.metacritic.com/movie/paddington-2/'},
+  'Sing Street':{imdb:'https://www.imdb.com/title/tt3544112/',rotten:'https://www.rottentomatoes.com/m/sing_street',metacritic:'https://www.metacritic.com/movie/sing-street/'},
+  'Amélie':{imdb:'https://www.imdb.com/title/tt0211915/',rotten:'https://www.rottentomatoes.com/m/amelie',metacritic:'https://www.metacritic.com/movie/amelie/'},
+  'Chef':{imdb:'https://www.imdb.com/title/tt2883512/',rotten:'https://www.rottentomatoes.com/m/chef_2014',metacritic:'https://www.metacritic.com/movie/chef/'},
+  'The Secret Life of Walter Mitty':{imdb:'https://www.imdb.com/title/tt0359950/',rotten:'https://www.rottentomatoes.com/m/the_secret_life_of_walter_mitty_2013',metacritic:'https://www.metacritic.com/movie/the-secret-life-of-walter-mitty/'},
+  'Soul':{imdb:'https://www.imdb.com/title/tt2948372/',rotten:'https://www.rottentomatoes.com/m/soul_2020',metacritic:'https://www.metacritic.com/movie/soul/'},
+  'The Intouchables':{imdb:'https://www.imdb.com/title/tt1675434/',rotten:'https://www.rottentomatoes.com/m/the_intouchables',metacritic:'https://www.metacritic.com/movie/the-intouchables/'},
+  'Little Miss Sunshine':{imdb:'https://www.imdb.com/title/tt0449059/',rotten:'https://www.rottentomatoes.com/m/little_miss_sunshine',metacritic:'https://www.metacritic.com/movie/little-miss-sunshine/'},
+  'Billy Elliot':{imdb:'https://www.imdb.com/title/tt0249462/',rotten:'https://www.rottentomatoes.com/m/billy_elliot',metacritic:'https://www.metacritic.com/movie/billy-elliot/'},
+  'Good Will Hunting':{imdb:'https://www.imdb.com/title/tt0119217/',rotten:'https://www.rottentomatoes.com/m/good_will_hunting',metacritic:'https://www.metacritic.com/movie/good-will-hunting/'},
+  'Remember the Titans':{imdb:'https://www.imdb.com/title/tt0210945/',rotten:'https://www.rottentomatoes.com/m/remember_the_titans',metacritic:'https://www.metacritic.com/movie/remember-the-titans/'},
+  'Hidden Figures':{imdb:'https://www.imdb.com/title/tt4846340/',rotten:'https://www.rottentomatoes.com/m/hidden_figures',metacritic:'https://www.metacritic.com/movie/hidden-figures/'},
+  'Moneyball':{imdb:'https://www.imdb.com/title/tt1210166/',rotten:'https://www.rottentomatoes.com/m/moneyball',metacritic:'https://www.metacritic.com/movie/moneyball/'},
+  "The King's Speech":{imdb:'https://www.imdb.com/title/tt1504320/',rotten:'https://www.rottentomatoes.com/m/the_kings_speech',metacritic:'https://www.metacritic.com/movie/the-kings-speech/'},
+  'School of Rock':{imdb:'https://www.imdb.com/title/tt0332379/',rotten:'https://www.rottentomatoes.com/m/school_of_rock',metacritic:'https://www.metacritic.com/movie/school-of-rock/'},
+  'Rudy':{imdb:'https://www.imdb.com/title/tt0108002/',rotten:'https://www.rottentomatoes.com/m/rudy',metacritic:'https://www.metacritic.com/movie/rudy/'},
+  'October Sky':{imdb:'https://www.imdb.com/title/tt0132477/',rotten:'https://www.rottentomatoes.com/m/october_sky',metacritic:'https://www.metacritic.com/movie/october-sky/'},
+  'The Truman Show':{imdb:'https://www.imdb.com/title/tt0120382/',rotten:'https://www.rottentomatoes.com/m/truman_show',metacritic:'https://www.metacritic.com/movie/the-truman-show/'},
+  'Mission: Impossible - Fallout':{imdb:'https://www.imdb.com/title/tt4912910/',rotten:'https://www.rottentomatoes.com/m/mission_impossible_fallout',metacritic:'https://www.metacritic.com/movie/mission-impossible---fallout/'},
+  'The Fabelmans':{imdb:'https://www.imdb.com/title/tt14208870/',rotten:'https://www.rottentomatoes.com/m/the_fabelmans',metacritic:'https://www.metacritic.com/movie/the-fabelmans/'}
+};
+const assistantRatingLinks=(title,movie={})=>{
+  const mapped=assistantExternalMovieUrls[title]||{};
   const query=encodeURIComponent(title);
   return {
-    rotten:`https://www.rottentomatoes.com/search?search=${query}`,
-    imdb:`https://www.imdb.com/find/?q=${query}`,
-    metacritic:`https://www.metacritic.com/search/${query}/`
+    imdb:mapped.imdb||(movie.imdbId?`https://www.imdb.com/title/${movie.imdbId}/`:`https://www.imdb.com/find/?q=${query}`),
+    rotten:mapped.rotten||`https://www.rottentomatoes.com/m/${slugForExternalMoviePage(title,'_')}`,
+    metacritic:mapped.metacritic||`https://www.metacritic.com/movie/${slugForExternalMoviePage(title,'-')}/`
   };
 };
-const assistantRatingSources=title=>{
-  const links=assistantRatingLinks(title);
+const assistantRatingSources=(title,movie={})=>{
+  const links=assistantRatingLinks(title,movie);
   return [
-    {label:'IMDb',url:links.imdb,icon:'https://www.imdb.com/favicon.ico'},
-    {label:'Rotten Tomatoes',url:links.rotten,icon:'https://www.rottentomatoes.com/favicon.ico'},
-    {label:'Metacritic',url:links.metacritic,icon:'https://www.metacritic.com/favicon.ico'}
+    {label:'IMDb',url:links.imdb,icon:'https://cdn.simpleicons.org/imdb/F5C518'},
+    {label:'Rotten Tomatoes',url:links.rotten,icon:'https://cdn.simpleicons.org/rottentomatoes/FA320A'},
+    {label:'Metacritic',url:links.metacritic,icon:'https://cdn.simpleicons.org/metacritic/00CE7C'}
   ];
 };
 const assistantFallback=[
@@ -792,8 +847,14 @@ const fetchAssistantMovies=async answers=>{
     })
     .map(movie=>enrichAssistantMovie(movie,provider?answers.platform:''));
 };
-const openMovieDetails=movie=>{
+const openMovieDetails=async movie=>{
   const normalized=normalizeMovie(movie);
+  if(normalized.id&&token&&!normalized.imdbId){
+    try{
+      const externalIds=await tmdb(`/movie/${normalized.id}/external_ids`);
+      normalized.imdbId=externalIds.imdb_id||'';
+    }catch{}
+  }
   const content=trailerDialog.querySelector('[data-trailer-content]');
   const message=trailerDialog.querySelector('[data-trailer-message]');
   content.replaceChildren();
@@ -804,7 +865,7 @@ const openMovieDetails=movie=>{
   const storyLabel=document.createElement('span'); storyLabel.className='movie-detail-label'; storyLabel.textContent='Short story';
   const overview=document.createElement('p'); overview.className='movie-detail-story'; overview.textContent=normalized.overview;
   const ratings=document.createElement('div'); ratings.className='critic-ratings critic-logo-row'; ratings.setAttribute('aria-label',`External rating websites for ${normalized.title}`);
-  assistantRatingSources(normalized.title).forEach(({label,url,icon})=>{
+  assistantRatingSources(normalized.title,normalized).forEach(({label,url,icon})=>{
     const link=document.createElement('a');
     link.href=url;
     link.target='_blank';
