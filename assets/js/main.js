@@ -280,7 +280,11 @@ const filterRadarMovies=(movies,filters=getRadarFilters())=>{
       dateMatch;
   }).sort((a,b)=>{
     if(filters.anticipated==='high')return Number(b.popularity||0)-Number(a.popularity||0)||a.releaseDate.localeCompare(b.releaseDate);
-    if(filters.anticipated==='medium')return buzzRank(b.buzz)-buzzRank(a.buzz)||Number(b.popularity||0)-Number(a.popularity||0)||a.releaseDate.localeCompare(b.releaseDate);
+    if(filters.anticipated==='medium'){
+      const aMedium=a.buzz==='Medium'?0:a.buzz==='High'?1:2;
+      const bMedium=b.buzz==='Medium'?0:b.buzz==='High'?1:2;
+      return aMedium-bMedium||Number(b.popularity||0)-Number(a.popularity||0)||a.releaseDate.localeCompare(b.releaseDate);
+    }
     return a.releaseDate.localeCompare(b.releaseDate);
   });
 };
@@ -387,7 +391,7 @@ const radarDiscoverParams=(filters=getRadarFilters(),page=1)=>{
     'primary_release_date.gte':range.gte,
     region:'DE',
     with_release_type:'2|3|4',
-    sort_by:filters.anticipated?'popularity.desc':'primary_release_date.asc',
+    sort_by:'primary_release_date.asc',
     include_adult:'false',
     page:String(page)
   };
@@ -446,21 +450,16 @@ const mergeRadarMovies=movies=>{
 };
 const applyRadarFilters=async ()=>{
   if(token){
-    const filters=getRadarFilters();
     await loadComingPage(true);
     await loadComingPage(false);
     await loadComingPage(false);
-    if(filters.anticipated){
-      await loadComingPage(false);
-      await loadComingPage(false);
-    }
     return;
   }
   showComing(filterRadarMovies(comingMovies));
 };
 genreFilter?.addEventListener('change',applyRadarFilters);
 dateFilter?.addEventListener('change',applyRadarFilters);
-anticipatedFilter?.addEventListener('change',applyRadarFilters);
+anticipatedFilter?.addEventListener('change',()=>showComing(filterRadarMovies(comingMovies)));
 loadMoreButton?.addEventListener('click',()=>loadComingPage(false));
 let searchTimer;
 movieSearch?.addEventListener('input', () => {
