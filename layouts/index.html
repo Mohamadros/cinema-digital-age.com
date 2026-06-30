@@ -80,6 +80,20 @@
       <label class="journal-search"><span class="sr-only">Search film criticism</span><input type="search" data-journal-search placeholder="Search criticism…"><span aria-hidden="true">⌕</span></label>
     </div>
     {{ $reviews := $journal.RegularPages.ByDate.Reverse }}
+    {{ with index $reviews 0 }}
+    <aside class="latest-review-alert reveal" aria-label="Latest Critical Frames review">
+      <div>
+        <span>New in Critical Frames</span>
+        <h3>{{ .Title }}</h3>
+        <p>{{ with .Params.hook }}{{ . }}{{ else }}{{ .Summary }}{{ end }}</p>
+      </div>
+      <div class="latest-review-meta">
+        <time datetime="{{ .Date.Format "2006-01-02" }}">{{ .Date.Format "2 Jan 2006" }}</time>
+        <strong aria-label="{{ .Params.rating }} out of 5 stars">{{ strings.Repeat .Params.rating "★" }}{{ strings.Repeat (sub 5 .Params.rating) "☆" }}</strong>
+        <a href="{{ .RelPermalink }}">Read review</a>
+      </div>
+    </aside>
+    {{ end }}
     <div class="criticism-layout" data-journal-grid>
       <div class="featured-review">
         <p class="archive-label">Newest review</p>
