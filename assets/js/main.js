@@ -1336,22 +1336,63 @@ updateAssistantMemory();
 
 const communityForm=document.querySelector('[data-community-form]');
 const memoryWall=document.querySelector('.memory-wall');
+const communityDialog=document.querySelector('[data-community-dialog]');
+const communityDialogContent=document.querySelector('[data-community-dialog-content]');
+const communityClose=document.querySelector('[data-community-close]');
+const escapeHTML=value=>String(value??'').replace(/[&<>"']/g,character=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));
+const formatCommunityDate=value=>{
+  const date=value?new Date(value):new Date();
+  if(Number.isNaN(date.getTime()))return value||'Today';
+  return date.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
+};
+const openCommunityReview=card=>{
+  if(!communityDialog||!communityDialogContent||!card)return;
+  const data=card.dataset;
+  const score=Math.max(0,Math.min(5,parseInt(data.rating,10)||0));
+  const poster=escapeHTML(data.poster||'images/movie-poster-fallback.svg');
+  communityDialogContent.innerHTML=`
+    <div class="community-dialog-grid">
+      <img src="${poster}" alt="Poster for ${escapeHTML(data.movie||'community review')}" onerror="this.onerror=null;this.src='images/movie-poster-fallback.svg';">
+      <div>
+        <span class="memory-rating">${'★'.repeat(score)}${'☆'.repeat(5-score)}</span>
+        <h3>${escapeHTML(data.movie||'Untitled film')}</h3>
+        <h4>${escapeHTML(data.reviewTitle||'Community review')}</h4>
+        <p>${escapeHTML(data.experience||'A cinema memory worth keeping.')}</p>
+        <dl>
+          <div><dt>Author</dt><dd>${escapeHTML(data.author||'Anonymous')}</dd></div>
+          <div><dt>Date</dt><dd>${escapeHTML(formatCommunityDate(data.date))}</dd></div>
+          <div><dt>Cinema</dt><dd>${escapeHTML(data.cinema||'Cinema memory')}</dd></div>
+          <div><dt>Recommend</dt><dd>${escapeHTML(data.recommend||'Maybe')}</dd></div>
+          <div><dt>Before</dt><dd>${escapeHTML(data.before||'-')}</dd></div>
+          <div><dt>After</dt><dd>${escapeHTML(data.after||'-')}</dd></div>
+        </dl>
+      </div>
+    </div>`;
+  if(typeof communityDialog.showModal==='function')communityDialog.showModal();
+};
 const addMemoryCard=memory=>{
   if(!memoryWall||!memory.movie)return;
   const score=Math.max(0,Math.min(5,parseInt(memory.rating,10)||0));
-  const card=document.createElement('article');card.className='memory-card is-visible';
+  const recordedAt=memory.recordedAt||new Date().toISOString();
+  const poster=memory.poster||'images/movie-poster-fallback.svg';
+  const card=document.createElement('article');card.className='memory-case is-visible';card.tabIndex=0;card.setAttribute('role','button');card.setAttribute('aria-label',`Open ${memory.name||'Anonymous'}'s review of ${memory.movie}`);
+  card.dataset.movie=memory.movie;card.dataset.reviewTitle=memory['review-title']||'Community review';card.dataset.rating=String(score);card.dataset.author=memory.name||'Anonymous';card.dataset.date=recordedAt;card.dataset.cinema=memory.cinema||'Cinema memory';card.dataset.poster=poster;card.dataset.experience=memory.experience||'A cinema memory worth keeping.';card.dataset.before=memory['feeling-before']||'-';card.dataset.after=memory['feeling-after']||'-';card.dataset.recommend=memory.recommend||'Maybe';
+  const image=document.createElement('img');image.src=poster;image.alt=`Poster thumbnail for ${memory.movie}`;image.loading='lazy';image.onerror=()=>{image.onerror=null;image.src='images/movie-poster-fallback.svg';};
+  const spine=document.createElement('span');spine.className='case-spine';
   const rating=document.createElement('span');rating.className='memory-rating';rating.textContent='★'.repeat(score)+'☆'.repeat(5-score);
-  const title=document.createElement('h3');title.textContent=memory.movie;
-  const experience=document.createElement('p');experience.textContent=`“${memory.experience||'A cinema memory worth keeping.'}”`;
-  const details=document.createElement('dl');
-  [['Before',memory['feeling-before']||'—'],['After',memory['feeling-after']||'—']].forEach(([label,value])=>{const wrap=document.createElement('div');const term=document.createElement('dt');const description=document.createElement('dd');term.textContent=label;description.textContent=value;wrap.append(term,description);details.append(wrap);});
-  const byline=document.createElement('small');byline.textContent=`${memory.name||'Anonymous'} · ${memory.cinema||'Cinema memory'}`;
-  card.append(rating,title,experience,details,byline);memoryWall.prepend(card);
+  const title=document.createElement('strong');title.textContent=memory.movie;
+  const reviewTitle=document.createElement('em');reviewTitle.textContent=memory['review-title']||'Community review';
+  const byline=document.createElement('small');byline.textContent=`${memory.name||'Anonymous'} · ${formatCommunityDate(recordedAt)}`;
+  spine.append(rating,title,reviewTitle,byline);card.append(image,spine);memoryWall.append(card);card.scrollIntoView({behavior:'smooth',inline:'end',block:'nearest'});
 };
-JSON.parse(localStorage.getItem('cinemaCommunityMemories')||'[]').slice(-3).forEach(addMemoryCard);
+memoryWall?.addEventListener('click',event=>openCommunityReview(event.target.closest('.memory-case')));
+memoryWall?.addEventListener('keydown',event=>{if((event.key==='Enter'||event.key===' ')&&event.target.closest('.memory-case')){event.preventDefault();openCommunityReview(event.target.closest('.memory-case'));}});
+communityClose?.addEventListener('click',()=>communityDialog?.close());
+communityDialog?.addEventListener('click',event=>{if(event.target===communityDialog)communityDialog.close();});
+JSON.parse(localStorage.getItem('cinemaCommunityMemories')||'[]').forEach(addMemoryCard);
 communityForm?.addEventListener('submit',async event=>{
   event.preventDefault(); const message=communityForm.querySelector('[data-community-message]'); message.textContent='Saving your cinema memory…';
-  const memory=Object.fromEntries(new FormData(communityForm).entries()); const saved=JSON.parse(localStorage.getItem('cinemaCommunityMemories')||'[]'); saved.push({...memory,recordedAt:new Date().toISOString()}); localStorage.setItem('cinemaCommunityMemories',JSON.stringify(saved));
+  const memory=Object.fromEntries(new FormData(communityForm).entries()); const saved=JSON.parse(localStorage.getItem('cinemaCommunityMemories')||'[]'); const storedMemory={...memory,recordedAt:new Date().toISOString()}; saved.push(storedMemory); localStorage.setItem('cinemaCommunityMemories',JSON.stringify(saved));
   if(!['localhost','127.0.0.1'].includes(location.hostname)){try{await fetch('/',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams(new FormData(communityForm)).toString()});}catch{message.textContent='Saved on this device, but the online form could not be reached.';return;}}
-  addMemoryCard(memory); communityForm.reset(); message.textContent='Your memory has been pinned. Thank you.';
+  addMemoryCard(storedMemory); communityForm.reset(); message.textContent='Your review has been added to the shelf. Thank you.';
 });

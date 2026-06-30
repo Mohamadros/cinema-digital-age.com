@@ -1,7 +1,7 @@
 +++
-title = "Movie Decision Assistant"
+title = "Movie Match"
 kicker = "What should I watch?"
-intro = "Answer a few questions and get a focused poster-wall shortlist instead of scrolling through endless catalogues."
+intro = "Find your perfect movie match."
 weight = 10
 +++
 

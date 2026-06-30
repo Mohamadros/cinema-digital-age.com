@@ -1,6 +1,6 @@
 +++
-title = "Cinema Memory Wall"
+title = "Community Voices"
 kicker = "Community reviews"
-intro = "A film ends. The feeling continues. Leave a memory from your own night at the cinema."
+intro = "See what the community is watching and saying."
 weight = 50
 +++
