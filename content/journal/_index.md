@@ -1,6 +1,6 @@
 +++
 title = "Critical Frames"
 kicker = "Thoughts. Frames. Perspectives."
-intro = "Film reviews, personal criticism, and essay-like reflections after the lights come back on."
+intro = "Film reviews, thoughtful criticism."
 weight = 30
 +++

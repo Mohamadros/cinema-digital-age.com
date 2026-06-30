@@ -1338,7 +1338,8 @@ const communityForm=document.querySelector('[data-community-form]');
 const memoryWall=document.querySelector('.memory-wall');
 const communityDialog=document.querySelector('[data-community-dialog]');
 const communityDialogContent=document.querySelector('[data-community-dialog-content]');
-const communityClose=document.querySelector('[data-community-close]');
+const communityCurrent=document.querySelector('[data-community-current]');
+const communityTotal=document.querySelector('[data-community-total]');
 const escapeHTML=value=>String(value??'').replace(/[&<>"']/g,character=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));
 const formatCommunityDate=value=>{
   const date=value?new Date(value):new Date();
@@ -1375,21 +1376,81 @@ const addMemoryCard=memory=>{
   const score=Math.max(0,Math.min(5,parseInt(memory.rating,10)||0));
   const recordedAt=memory.recordedAt||new Date().toISOString();
   const poster=memory.poster||'images/movie-poster-fallback.svg';
-  const card=document.createElement('article');card.className='memory-case is-visible';card.tabIndex=0;card.setAttribute('role','button');card.setAttribute('aria-label',`Open ${memory.name||'Anonymous'}'s review of ${memory.movie}`);
-  card.dataset.movie=memory.movie;card.dataset.reviewTitle=memory['review-title']||'Community review';card.dataset.rating=String(score);card.dataset.author=memory.name||'Anonymous';card.dataset.date=recordedAt;card.dataset.cinema=memory.cinema||'Cinema memory';card.dataset.poster=poster;card.dataset.experience=memory.experience||'A cinema memory worth keeping.';card.dataset.before=memory['feeling-before']||'-';card.dataset.after=memory['feeling-after']||'-';card.dataset.recommend=memory.recommend||'Maybe';
+  const card=document.createElement('article');card.className='memory-case is-visible';card.tabIndex=0;card.setAttribute('aria-label',`Open ${memory.name||'Anonymous'}'s review of ${memory.movie}`);
+  card.dataset.movie=memory.movie;card.dataset.reviewTitle=memory['review-title']||'Community review';card.dataset.rating=String(score);card.dataset.author=memory.name||'Anonymous';card.dataset.date=recordedAt;card.dataset.cinema=memory.cinema||'Cinema memory';card.dataset.poster=poster;card.dataset.experience=memory.experience||'A cinema memory worth keeping.';card.dataset.preview=memory.preview||memory.experience||'A cinema memory worth keeping.';card.dataset.before=memory['feeling-before']||'-';card.dataset.after=memory['feeling-after']||'-';card.dataset.recommend=memory.recommend||'Maybe';
   const image=document.createElement('img');image.src=poster;image.alt=`Poster thumbnail for ${memory.movie}`;image.loading='lazy';image.onerror=()=>{image.onerror=null;image.src='images/movie-poster-fallback.svg';};
   const spine=document.createElement('span');spine.className='case-spine';
   const rating=document.createElement('span');rating.className='memory-rating';rating.textContent='★'.repeat(score)+'☆'.repeat(5-score);
   const title=document.createElement('strong');title.textContent=memory.movie;
   const reviewTitle=document.createElement('em');reviewTitle.textContent=memory['review-title']||'Community review';
+  const preview=document.createElement('p');preview.textContent=memory.preview||memory.experience||'A cinema memory worth keeping.';
   const byline=document.createElement('small');byline.textContent=`${memory.name||'Anonymous'} · ${formatCommunityDate(recordedAt)}`;
-  spine.append(rating,title,reviewTitle,byline);card.append(image,spine);memoryWall.append(card);card.scrollIntoView({behavior:'smooth',inline:'end',block:'nearest'});
+  spine.append(rating,title,reviewTitle,preview,byline);card.append(image,spine);memoryWall.append(card);updateCommunityDeck(memoryWall.children.length-1);
 };
-memoryWall?.addEventListener('click',event=>openCommunityReview(event.target.closest('.memory-case')));
-memoryWall?.addEventListener('keydown',event=>{if((event.key==='Enter'||event.key===' ')&&event.target.closest('.memory-case')){event.preventDefault();openCommunityReview(event.target.closest('.memory-case'));}});
-communityClose?.addEventListener('click',()=>communityDialog?.close());
+let communityActiveIndex=0;
+let communityScrollLock=false;
+let communityTouchStart=0;
+const updateCommunityDeck=index=>{
+  if(!memoryWall)return;
+  const cards=[...memoryWall.querySelectorAll('.memory-case')];
+  if(!cards.length)return;
+  communityActiveIndex=Math.max(0,Math.min(cards.length-1,index));
+  memoryWall.dataset.activeIndex=String(communityActiveIndex);
+  if(communityCurrent)communityCurrent.textContent=String(communityActiveIndex+1).padStart(2,'0');
+  if(communityTotal)communityTotal.textContent=String(cards.length).padStart(2,'0');
+  cards.forEach((card,cardIndex)=>{
+    const offset=cardIndex-communityActiveIndex;
+    card.dataset.index=String(cardIndex);
+    card.dataset.state=offset===0?'active':offset===-1?'prev':offset===1?'next':offset<-1?'past':'future';
+    card.tabIndex=Math.abs(offset)<=1?0:-1;
+  });
+};
+const moveCommunityDeck=direction=>{
+  if(!memoryWall)return false;
+  const cards=memoryWall.querySelectorAll('.memory-case');
+  const nextIndex=communityActiveIndex+direction;
+  if(nextIndex<0||nextIndex>=cards.length)return false;
+  updateCommunityDeck(nextIndex);
+  return true;
+};
+memoryWall?.addEventListener('wheel',event=>{
+  const direction=Math.abs(event.deltaY)>=Math.abs(event.deltaX)?Math.sign(event.deltaY):Math.sign(event.deltaX);
+  if(!direction||communityScrollLock)return;
+  if(moveCommunityDeck(direction>0?1:-1)){
+    event.preventDefault();
+    communityScrollLock=true;
+    setTimeout(()=>{communityScrollLock=false;},520);
+  }
+},{passive:false});
+memoryWall?.addEventListener('touchstart',event=>{communityTouchStart=event.touches[0]?.clientY||0;},{passive:true});
+memoryWall?.addEventListener('touchend',event=>{
+  const end=event.changedTouches[0]?.clientY||0;
+  const distance=communityTouchStart-end;
+  if(Math.abs(distance)>42)moveCommunityDeck(distance>0?1:-1);
+},{passive:true});
+memoryWall?.addEventListener('click',event=>{
+  const card=event.target.closest('.memory-case');
+  if(!card||!memoryWall.contains(card))return;
+  const index=parseInt(card.dataset.index,10);
+  if(index!==communityActiveIndex){updateCommunityDeck(index);return;}
+  openCommunityReview(card);
+});
+memoryWall?.addEventListener('keydown',event=>{
+  const keyMap={ArrowDown:1,ArrowRight:1,PageDown:1,ArrowUp:-1,ArrowLeft:-1,PageUp:-1};
+  if(keyMap[event.key]){
+    if(moveCommunityDeck(keyMap[event.key]))event.preventDefault();
+    return;
+  }
+  if((event.key==='Enter'||event.key===' ')&&event.target.closest('.memory-case')){
+    event.preventDefault();
+    const card=event.target.closest('.memory-case');
+    const index=parseInt(card.dataset.index,10);
+    if(index===communityActiveIndex)openCommunityReview(card);else updateCommunityDeck(index);
+  }
+});
 communityDialog?.addEventListener('click',event=>{if(event.target===communityDialog)communityDialog.close();});
 JSON.parse(localStorage.getItem('cinemaCommunityMemories')||'[]').forEach(addMemoryCard);
+updateCommunityDeck(0);
 communityForm?.addEventListener('submit',async event=>{
   event.preventDefault(); const message=communityForm.querySelector('[data-community-message]'); message.textContent='Saving your cinema memory…';
   const memory=Object.fromEntries(new FormData(communityForm).entries()); const saved=JSON.parse(localStorage.getItem('cinemaCommunityMemories')||'[]'); const storedMemory={...memory,recordedAt:new Date().toISOString()}; saved.push(storedMemory); localStorage.setItem('cinemaCommunityMemories',JSON.stringify(saved));
