@@ -1416,26 +1416,26 @@ const moveCommunityDeck=direction=>{
   return true;
 };
 memoryWall?.addEventListener('wheel',event=>{
-  const direction=Math.abs(event.deltaY)>=Math.abs(event.deltaX)?Math.sign(event.deltaY):Math.sign(event.deltaX);
+  const direction=Math.sign(event.deltaY);
   if(!direction)return;
   if(communityScrollLock){
     event.preventDefault();
     clearTimeout(communityWheelTimer);
-    communityWheelTimer=setTimeout(()=>{communityScrollLock=false;},220);
+    communityWheelTimer=setTimeout(()=>{communityScrollLock=false;},90);
     return;
   }
   if(moveCommunityDeck(direction>0?1:-1)){
     event.preventDefault();
     communityScrollLock=true;
     clearTimeout(communityWheelTimer);
-    communityWheelTimer=setTimeout(()=>{communityScrollLock=false;},220);
+    communityWheelTimer=setTimeout(()=>{communityScrollLock=false;},90);
   }
 },{passive:false});
 memoryWall?.addEventListener('touchstart',event=>{communityTouchStart=event.touches[0]?.clientY||0;},{passive:true});
 memoryWall?.addEventListener('touchend',event=>{
   const end=event.changedTouches[0]?.clientY||0;
   const distance=communityTouchStart-end;
-  if(Math.abs(distance)>42)moveCommunityDeck(distance>0?1:-1);
+  if(Math.abs(distance)>24)moveCommunityDeck(distance>0?1:-1);
 },{passive:true});
 memoryWall?.addEventListener('click',event=>{
   const card=event.target.closest('.memory-case');
