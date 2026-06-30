@@ -1,7 +1,7 @@
 +++
 title = "Movie Match"
 kicker = "What should I watch?"
-intro = "Find your perfect movie match."
+intro = "Find your perfect movie match"
 weight = 10
 +++
 
