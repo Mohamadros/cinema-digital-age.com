@@ -1385,41 +1385,50 @@ const addMemoryCard=memory=>{
   const reviewTitle=document.createElement('em');reviewTitle.textContent=memory['review-title']||'Community review';
   const preview=document.createElement('p');preview.textContent=memory.preview||memory.experience||'A cinema memory worth keeping.';
   const byline=document.createElement('small');byline.textContent=`${memory.name||'Anonymous'} · ${formatCommunityDate(recordedAt)}`;
-  spine.append(rating,title,reviewTitle,preview,byline);card.append(image,spine);memoryWall.append(card);updateCommunityDeck(memoryWall.children.length-1);
+  spine.append(rating,title,reviewTitle,preview,byline);card.append(image,spine);memoryWall.append(card);communityCards=[...memoryWall.querySelectorAll('.memory-case')];updateCommunityDeck(communityCards.length-1);
 };
 let communityActiveIndex=0;
 let communityScrollLock=false;
+let communityWheelTimer;
 let communityTouchStart=0;
+let communityCards=memoryWall?[...memoryWall.querySelectorAll('.memory-case')]:[];
 const updateCommunityDeck=index=>{
   if(!memoryWall)return;
-  const cards=[...memoryWall.querySelectorAll('.memory-case')];
-  if(!cards.length)return;
-  communityActiveIndex=Math.max(0,Math.min(cards.length-1,index));
+  if(!communityCards.length)communityCards=[...memoryWall.querySelectorAll('.memory-case')];
+  if(!communityCards.length)return;
+  communityActiveIndex=Math.max(0,Math.min(communityCards.length-1,index));
   memoryWall.dataset.activeIndex=String(communityActiveIndex);
   if(communityCurrent)communityCurrent.textContent=String(communityActiveIndex+1).padStart(2,'0');
-  if(communityTotal)communityTotal.textContent=String(cards.length).padStart(2,'0');
-  cards.forEach((card,cardIndex)=>{
+  if(communityTotal)communityTotal.textContent=String(communityCards.length).padStart(2,'0');
+  communityCards.forEach((card,cardIndex)=>{
     const offset=cardIndex-communityActiveIndex;
     card.dataset.index=String(cardIndex);
     card.dataset.state=offset===0?'active':offset===-1?'prev':offset===1?'next':offset<-1?'past':'future';
+    card.dataset.visible=Math.abs(offset)<=1?'true':'false';
     card.tabIndex=Math.abs(offset)<=1?0:-1;
   });
 };
 const moveCommunityDeck=direction=>{
   if(!memoryWall)return false;
-  const cards=memoryWall.querySelectorAll('.memory-case');
   const nextIndex=communityActiveIndex+direction;
-  if(nextIndex<0||nextIndex>=cards.length)return false;
+  if(nextIndex<0||nextIndex>=communityCards.length)return false;
   updateCommunityDeck(nextIndex);
   return true;
 };
 memoryWall?.addEventListener('wheel',event=>{
   const direction=Math.abs(event.deltaY)>=Math.abs(event.deltaX)?Math.sign(event.deltaY):Math.sign(event.deltaX);
-  if(!direction||communityScrollLock)return;
+  if(!direction)return;
+  if(communityScrollLock){
+    event.preventDefault();
+    clearTimeout(communityWheelTimer);
+    communityWheelTimer=setTimeout(()=>{communityScrollLock=false;},220);
+    return;
+  }
   if(moveCommunityDeck(direction>0?1:-1)){
     event.preventDefault();
     communityScrollLock=true;
-    setTimeout(()=>{communityScrollLock=false;},520);
+    clearTimeout(communityWheelTimer);
+    communityWheelTimer=setTimeout(()=>{communityScrollLock=false;},220);
   }
 },{passive:false});
 memoryWall?.addEventListener('touchstart',event=>{communityTouchStart=event.touches[0]?.clientY||0;},{passive:true});
@@ -1450,6 +1459,7 @@ memoryWall?.addEventListener('keydown',event=>{
 });
 communityDialog?.addEventListener('click',event=>{if(event.target===communityDialog)communityDialog.close();});
 JSON.parse(localStorage.getItem('cinemaCommunityMemories')||'[]').forEach(addMemoryCard);
+communityCards=memoryWall?[...memoryWall.querySelectorAll('.memory-case')]:[];
 updateCommunityDeck(0);
 communityForm?.addEventListener('submit',async event=>{
   event.preventDefault(); const message=communityForm.querySelector('[data-community-message]'); message.textContent='Saving your cinema memory…';

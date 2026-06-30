@@ -128,6 +128,11 @@
   <div class="section-shell">
     {{ partial "section-heading.html" $community }}
     <div class="community-layout community-browser reveal">
+      <form class="memory-form reveal" name="community-reviews" method="POST" data-netlify="true" netlify-honeypot="bot-field" data-community-form>
+        <input type="hidden" name="form-name" value="community-reviews"><p class="honeypot"><label>Do not fill this out: <input name="bot-field"></label></p>
+        <div class="form-grid"><label>Name<input name="name" required placeholder="Your name"></label><label>Movie title<input name="movie" required placeholder="The film you watched"></label><label>Review title<input name="review-title" required placeholder="A short headline"></label><label>Rating<select name="rating" required><option value="">Choose rating</option><option>5 — Exceptional</option><option>4 — Great</option><option>3 — Good</option><option>2 — Fair</option><option>1 — Disappointing</option></select></label><label>Cinema name<input name="cinema" placeholder="Where did you see it?"></label><label>Poster URL<input name="poster" type="url" placeholder="Optional poster image link"></label><label>Feeling before<input name="feeling-before" placeholder="e.g. Stressed"></label><label>Feeling after<input name="feeling-after" placeholder="e.g. Inspired"></label><label>Recommend?<select name="recommend" required><option value="">Choose one</option><option>Yes</option><option>No</option><option>Maybe</option></select></label><label class="form-wide">Your cinema experience<textarea name="experience" required rows="5" placeholder="What stayed with you after the credits?"></textarea></label></div>
+        <button class="button" type="submit"><span>Add review</span><span aria-hidden="true">＋</span></button><p class="form-message" data-community-message aria-live="polite"></p>
+      </form>
       <div class="community-archive" aria-label="Scroll-controlled community review shelf">
         <div class="shelf-header"><span>Scroll the archive</span><p>Each scroll step brings one review case forward from the stack.</p></div>
         <div class="memory-wall" tabindex="0" aria-label="Recent community reviews" data-community-deck data-active-index="0">
