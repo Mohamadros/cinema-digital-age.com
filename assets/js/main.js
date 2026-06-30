@@ -1385,14 +1385,12 @@ const addMemoryCard=memory=>{
   const reviewTitle=document.createElement('em');reviewTitle.textContent=memory['review-title']||'Community review';
   const preview=document.createElement('p');preview.textContent=memory.preview||memory.experience||'A cinema memory worth keeping.';
   const byline=document.createElement('small');byline.textContent=`${memory.name||'Anonymous'} · ${formatCommunityDate(recordedAt)}`;
-  spine.append(rating,title,reviewTitle,preview,byline);card.append(image,spine);memoryWall.append(card);communityCards=[...memoryWall.querySelectorAll('.memory-case')];updateCommunityDeck(communityCards.length-1);
+  spine.append(rating,title,reviewTitle,preview,byline);card.append(image,spine);memoryWall.append(card);communityCards=[...memoryWall.querySelectorAll('.memory-case')];updateCommunityDeck(communityCards.length-1,{scroll:true});
 };
 let communityActiveIndex=0;
-let communityScrollLock=false;
-let communityWheelTimer;
-let communityTouchStart=0;
 let communityCards=memoryWall?[...memoryWall.querySelectorAll('.memory-case')]:[];
-const updateCommunityDeck=index=>{
+let communityScrollFrame=0;
+const updateCommunityDeck=(index,{scroll=false}={})=>{
   if(!memoryWall)return;
   if(!communityCards.length)communityCards=[...memoryWall.querySelectorAll('.memory-case')];
   if(!communityCards.length)return;
@@ -1404,57 +1402,50 @@ const updateCommunityDeck=index=>{
     const offset=cardIndex-communityActiveIndex;
     card.dataset.index=String(cardIndex);
     card.dataset.state=offset===0?'active':offset===-1?'prev':offset===1?'next':offset<-1?'past':'future';
-    card.dataset.visible=Math.abs(offset)<=1?'true':'false';
-    card.tabIndex=Math.abs(offset)<=1?0:-1;
+    card.dataset.visible='true';
+    card.tabIndex=0;
   });
+  if(scroll)communityCards[communityActiveIndex]?.scrollIntoView({behavior:'smooth',block:'center'});
 };
-const moveCommunityDeck=direction=>{
-  if(!memoryWall)return false;
-  const nextIndex=communityActiveIndex+direction;
-  if(nextIndex<0||nextIndex>=communityCards.length)return false;
-  updateCommunityDeck(nextIndex);
-  return true;
+const syncCommunityDeckFromScroll=()=>{
+  if(!memoryWall||!communityCards.length)return;
+  const wallRect=memoryWall.getBoundingClientRect();
+  const wallCenter=wallRect.top+wallRect.height/2;
+  let closestIndex=communityActiveIndex;
+  let closestDistance=Infinity;
+  communityCards.forEach((card,index)=>{
+    const rect=card.getBoundingClientRect();
+    const distance=Math.abs(rect.top+rect.height/2-wallCenter);
+    if(distance<closestDistance){closestDistance=distance;closestIndex=index;}
+  });
+  if(closestIndex!==communityActiveIndex)updateCommunityDeck(closestIndex);
 };
-memoryWall?.addEventListener('wheel',event=>{
-  const direction=Math.sign(event.deltaY);
-  if(!direction)return;
-  if(communityScrollLock){
-    event.preventDefault();
-    clearTimeout(communityWheelTimer);
-    communityWheelTimer=setTimeout(()=>{communityScrollLock=false;},90);
-    return;
-  }
-  if(moveCommunityDeck(direction>0?1:-1)){
-    event.preventDefault();
-    communityScrollLock=true;
-    clearTimeout(communityWheelTimer);
-    communityWheelTimer=setTimeout(()=>{communityScrollLock=false;},90);
-  }
-},{passive:false});
-memoryWall?.addEventListener('touchstart',event=>{communityTouchStart=event.touches[0]?.clientY||0;},{passive:true});
-memoryWall?.addEventListener('touchend',event=>{
-  const end=event.changedTouches[0]?.clientY||0;
-  const distance=communityTouchStart-end;
-  if(Math.abs(distance)>24)moveCommunityDeck(distance>0?1:-1);
+memoryWall?.addEventListener('scroll',()=>{
+  if(communityScrollFrame)return;
+  communityScrollFrame=requestAnimationFrame(()=>{
+    communityScrollFrame=0;
+    syncCommunityDeckFromScroll();
+  });
 },{passive:true});
 memoryWall?.addEventListener('click',event=>{
   const card=event.target.closest('.memory-case');
   if(!card||!memoryWall.contains(card))return;
   const index=parseInt(card.dataset.index,10);
-  if(index!==communityActiveIndex){updateCommunityDeck(index);return;}
+  if(index!==communityActiveIndex){updateCommunityDeck(index,{scroll:true});return;}
   openCommunityReview(card);
 });
 memoryWall?.addEventListener('keydown',event=>{
   const keyMap={ArrowDown:1,ArrowRight:1,PageDown:1,ArrowUp:-1,ArrowLeft:-1,PageUp:-1};
   if(keyMap[event.key]){
-    if(moveCommunityDeck(keyMap[event.key]))event.preventDefault();
+    const nextIndex=Math.max(0,Math.min(communityCards.length-1,communityActiveIndex+keyMap[event.key]));
+    if(nextIndex!==communityActiveIndex){event.preventDefault();updateCommunityDeck(nextIndex,{scroll:true});}
     return;
   }
   if((event.key==='Enter'||event.key===' ')&&event.target.closest('.memory-case')){
     event.preventDefault();
     const card=event.target.closest('.memory-case');
     const index=parseInt(card.dataset.index,10);
-    if(index===communityActiveIndex)openCommunityReview(card);else updateCommunityDeck(index);
+    if(index===communityActiveIndex)openCommunityReview(card);else updateCommunityDeck(index,{scroll:true});
   }
 });
 communityDialog?.addEventListener('click',event=>{if(event.target===communityDialog)communityDialog.close();});
