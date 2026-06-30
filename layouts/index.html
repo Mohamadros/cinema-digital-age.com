@@ -5,6 +5,7 @@
 {{ $interviews := site.GetPage "/interviews" }}
 {{ $community := site.GetPage "/community" }}
 {{ $about := site.GetPage "/about" }}
+{{ $latestReview := index ($journal.RegularPages.ByDate.Reverse) 0 }}
 
 <section id="home" class="hero" aria-labelledby="hero-title" style="--hero-image:url('{{ .Params.hero_image | relURL }}')">
   <div class="hero-shade"></div>
@@ -13,6 +14,12 @@
     <h1 id="hero-title">Cinema <em>in the</em><br>Digital Age</h1>
     <p class="hero-subtitle">{{ .Description }}</p>
     <a class="button" href="{{ .Params.cta_url }}"><span>{{ .Params.cta_label }}</span><span aria-hidden="true">▶</span></a>
+    {{ with $latestReview }}
+    <p class="critical-frames-teaser hero-critical-teaser reveal">
+      <span>New in Critical Frames</span>
+      <a href="#journal">{{ .Title }}</a>
+    </p>
+    {{ end }}
   </div>
   <div class="hero-reel" aria-hidden="true"><span>Emotion</span><i></i><span>Discovery</span><i></i><span>Culture</span></div>
   <div class="scroll-cue" aria-hidden="true"><span>Now showing</span><i></i></div>
@@ -20,13 +27,6 @@
 
 <section class="cinema-intro" aria-label="Exhibition introduction">
   <div class="intro-copy reveal">{{ .Content }}</div>
-  {{ $latestReview := index ($journal.RegularPages.ByDate.Reverse) 0 }}
-  {{ with $latestReview }}
-  <p class="critical-frames-teaser reveal">
-    <span>New in Critical Frames</span>
-    <a href="#journal">{{ .Title }}</a>
-  </p>
-  {{ end }}
   <div class="marquee" aria-hidden="true"><div>Cinema remembers us · Cinema moves us · Cinema connects us ·&nbsp;</div><div>Cinema remembers us · Cinema moves us · Cinema connects us ·&nbsp;</div></div>
 </section>
 
