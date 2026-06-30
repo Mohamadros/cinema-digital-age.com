@@ -22,18 +22,10 @@
   <div class="intro-copy reveal">{{ .Content }}</div>
   {{ $latestReview := index ($journal.RegularPages.ByDate.Reverse) 0 }}
   {{ with $latestReview }}
-  <aside class="latest-review-alert reveal" aria-label="Latest Critical Frames review">
-    <div>
-      <span>New in Critical Frames</span>
-      <h3>{{ .Title }}</h3>
-      <p>{{ with .Params.hook }}{{ . }}{{ else }}{{ .Summary }}{{ end }}</p>
-    </div>
-    <div class="latest-review-meta">
-      <time datetime="{{ .Date.Format "2006-01-02" }}">{{ .Date.Format "2 Jan 2006" }}</time>
-      <strong aria-label="{{ .Params.rating }} out of 5 stars">{{ strings.Repeat .Params.rating "★" }}{{ strings.Repeat (sub 5 .Params.rating) "☆" }}</strong>
-      <a href="{{ .RelPermalink }}">Read review</a>
-    </div>
-  </aside>
+  <p class="critical-frames-teaser reveal">
+    <span>New in Critical Frames</span>
+    <a href="#journal">Latest reflection: <strong>{{ .Title }}</strong></a>
+  </p>
   {{ end }}
   <div class="marquee" aria-hidden="true"><div>Cinema remembers us · Cinema moves us · Cinema connects us ·&nbsp;</div><div>Cinema remembers us · Cinema moves us · Cinema connects us ·&nbsp;</div></div>
 </section>
