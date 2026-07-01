@@ -1336,6 +1336,7 @@ updateAssistantMemory();
 
 const communityForm=document.querySelector('[data-community-form]');
 const memoryWall=document.querySelector('.memory-wall');
+const communityArchive=document.querySelector('.community-archive');
 const communityDialog=document.querySelector('[data-community-dialog]');
 const communityDialogContent=document.querySelector('[data-community-dialog-content]');
 const communityCurrent=document.querySelector('[data-community-current]');
@@ -1392,8 +1393,8 @@ let communityCards=memoryWall?[...memoryWall.querySelectorAll('.memory-case')]:[
 let communityWheelDelta=0;
 let communityAnimating=false;
 let communityWheelTimer;
-const communityWheelThreshold=14;
-const communityAnimationMs=210;
+const communityWheelThreshold=4;
+const communityAnimationMs=145;
 const updateCommunityDeck=index=>{
   if(!memoryWall)return;
   if(!communityCards.length)communityCards=[...memoryWall.querySelectorAll('.memory-case')];
@@ -1420,7 +1421,7 @@ const moveCommunityDeck=direction=>{
 const flushCommunityWheel=()=>{
   if(communityAnimating||Math.abs(communityWheelDelta)<communityWheelThreshold)return;
   const direction=communityWheelDelta>0?1:-1;
-  communityWheelDelta=0;
+  communityWheelDelta-=direction*communityWheelThreshold;
   if(!moveCommunityDeck(direction))return;
   communityAnimating=true;
   clearTimeout(communityWheelTimer);
@@ -1429,14 +1430,17 @@ const flushCommunityWheel=()=>{
     flushCommunityWheel();
   },communityAnimationMs);
 };
-memoryWall?.addEventListener('wheel',event=>{
-  const direction=Math.sign(event.deltaY);
+communityArchive?.addEventListener('wheel',event=>{
+  const unit=event.deltaMode===1?16:event.deltaMode===2?120:1;
+  const delta=event.deltaY*unit;
+  const direction=Math.sign(delta);
   if(!direction)return;
   const canMove=direction>0?communityActiveIndex<communityCards.length-1:communityActiveIndex>0;
   if(!canMove)return;
   event.preventDefault();
-  communityWheelDelta+=event.deltaY;
-  communityWheelDelta=Math.max(-80,Math.min(80,communityWheelDelta));
+  if(Math.sign(communityWheelDelta)&&Math.sign(communityWheelDelta)!==direction)communityWheelDelta=0;
+  communityWheelDelta+=delta;
+  communityWheelDelta=Math.max(-120,Math.min(120,communityWheelDelta));
   flushCommunityWheel();
 },{passive:false});
 memoryWall?.addEventListener('click',event=>{
