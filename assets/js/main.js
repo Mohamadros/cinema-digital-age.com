@@ -1335,6 +1335,13 @@ document.querySelector('[data-clear-decision-memory]')?.addEventListener('click'
 updateAssistantMemory();
 
 const communityForm=document.querySelector('[data-community-form]');
+const communityMovieInput=communityForm?.querySelector('[data-community-movie-search]');
+const communityMovieSuggestions=communityForm?.querySelector('[data-community-movie-suggestions]');
+const communityPosterPreview=communityForm?.querySelector('[data-community-poster-preview]');
+const communityTmdbIdInput=communityForm?.querySelector('[data-community-tmdb-id]');
+const communityReleaseYearInput=communityForm?.querySelector('[data-community-release-year]');
+const communityPosterPathInput=communityForm?.querySelector('[data-community-poster-path]');
+const communityPosterUrlInput=communityForm?.querySelector('[data-community-poster-url]');
 const memoryWall=document.querySelector('.memory-wall');
 const communityArchive=document.querySelector('.community-archive');
 const communityDialog=document.querySelector('[data-community-dialog]');
@@ -1362,6 +1369,7 @@ const savedCommunityMemories=()=>{
 const persistCommunityMemories=memories=>localStorage.setItem(communityStorageKey,JSON.stringify(memories));
 const normalizeCommunityTitle=value=>String(value||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
 const communityPosterFallback=title=>posterFallback(title||'Community Review');
+const communityPosterFromPath=(posterPath,title)=>posterPath?`${imageBase}${posterPath}`:communityPosterFallback(title);
 const fetchCommunityPoster=async title=>{
   const fallback=communityPosterFallback(title);
   if(!token||!title)return fallback;
@@ -1374,6 +1382,118 @@ const fetchCommunityPoster=async title=>{
   }catch{
     return fallback;
   }
+};
+let communityMovieSearchTimer;
+let communityMovieSearchController;
+let selectedCommunityMovie=null;
+const clearCommunityMovieSelection=()=>{
+  selectedCommunityMovie=null;
+  if(communityTmdbIdInput)communityTmdbIdInput.value='';
+  if(communityReleaseYearInput)communityReleaseYearInput.value='';
+  if(communityPosterPathInput)communityPosterPathInput.value='';
+  if(communityPosterUrlInput)communityPosterUrlInput.value='';
+  if(communityPosterPreview){
+    communityPosterPreview.hidden=true;
+    communityPosterPreview.querySelector('img')?.removeAttribute('src');
+    const label=communityPosterPreview.querySelector('span');
+    if(label)label.textContent='';
+  }
+};
+const hideCommunityMovieSuggestions=()=>{
+  if(communityMovieSuggestions){
+    communityMovieSuggestions.hidden=true;
+    communityMovieSuggestions.replaceChildren();
+  }
+  communityMovieInput?.setAttribute('aria-expanded','false');
+};
+const showCommunityPosterPreview=movie=>{
+  if(!communityPosterPreview||!movie)return;
+  const poster=movie.posterUrl||communityPosterFallback(movie.title);
+  const image=communityPosterPreview.querySelector('img');
+  const label=communityPosterPreview.querySelector('span');
+  if(image){
+    image.src=poster;
+    image.alt=`Poster for ${movie.title}`;
+    image.onerror=()=>{image.onerror=null;image.src=communityPosterFallback(movie.title);};
+  }
+  if(label)label.textContent=`${movie.title}${movie.releaseYear?` (${movie.releaseYear})`:''}`;
+  communityPosterPreview.hidden=false;
+};
+const storeCommunityMovieSelection=movie=>{
+  selectedCommunityMovie=movie;
+  if(communityMovieInput)communityMovieInput.value=movie.displayTitle;
+  if(communityTmdbIdInput)communityTmdbIdInput.value=movie.tmdbId;
+  if(communityReleaseYearInput)communityReleaseYearInput.value=movie.releaseYear;
+  if(communityPosterPathInput)communityPosterPathInput.value=movie.posterPath;
+  if(communityPosterUrlInput)communityPosterUrlInput.value=movie.posterUrl;
+  showCommunityPosterPreview(movie);
+  hideCommunityMovieSuggestions();
+};
+const normalizeCommunityMovieResult=movie=>{
+  const releaseYear=(movie.release_date||'').slice(0,4);
+  const title=movie.title||movie.name||'Untitled film';
+  const posterPath=movie.poster_path||'';
+  return {
+    tmdbId:movie.id?String(movie.id):'',
+    title,
+    displayTitle:`${title}${releaseYear?` (${releaseYear})`:''}`,
+    releaseYear,
+    posterPath,
+    posterUrl:communityPosterFromPath(posterPath,title)
+  };
+};
+const renderCommunityMovieSuggestions=movies=>{
+  if(!communityMovieSuggestions||!communityMovieInput)return;
+  communityMovieSuggestions.replaceChildren();
+  if(!movies.length){
+    communityMovieSuggestions.hidden=true;
+    communityMovieInput.setAttribute('aria-expanded','false');
+    return;
+  }
+  movies.forEach(movie=>{
+    const option=document.createElement('button');
+    option.type='button';
+    option.className='movie-suggestion';
+    option.setAttribute('role','option');
+    option.dataset.tmdbId=movie.tmdbId;
+    const image=document.createElement('img');
+    image.src=movie.posterUrl;
+    image.alt='';
+    image.loading='lazy';
+    image.onerror=()=>{image.onerror=null;image.src=communityPosterFallback(movie.title);};
+    const text=document.createElement('span');
+    const title=document.createElement('strong');
+    title.textContent=movie.title;
+    const year=document.createElement('small');
+    year.textContent=movie.releaseYear||'Release year unavailable';
+    text.append(title,year);
+    option.append(image,text);
+    option.addEventListener('click',()=>storeCommunityMovieSelection(movie));
+    communityMovieSuggestions.append(option);
+  });
+  communityMovieSuggestions.hidden=false;
+  communityMovieInput.setAttribute('aria-expanded','true');
+};
+const searchCommunityMovies=query=>{
+  clearTimeout(communityMovieSearchTimer);
+  communityMovieSearchTimer=setTimeout(async()=>{
+    if(!token||query.length<2){hideCommunityMovieSuggestions();return;}
+    communityMovieSearchController?.abort();
+    communityMovieSearchController=new AbortController();
+    try{
+      const url=new URL(`${apiBase}/search/movie`);
+      url.searchParams.set('query',query);
+      url.searchParams.set('include_adult','false');
+      url.searchParams.set('page','1');
+      const response=await fetch(url,{signal:communityMovieSearchController.signal,headers:{Authorization:`Bearer ${token}`,accept:'application/json'}});
+      if(!response.ok)throw new Error('Movie search failed');
+      const data=await response.json();
+      const movies=(Array.isArray(data.results)?data.results:[]).slice(0,6).map(normalizeCommunityMovieResult);
+      renderCommunityMovieSuggestions(movies);
+    }catch(error){
+      if(error.name!=='AbortError')hideCommunityMovieSuggestions();
+    }
+  },120);
 };
 const openCommunityReview=card=>{
   if(!communityDialog||!communityDialogContent||!card)return;
@@ -1405,11 +1525,11 @@ const addMemoryCard=memory=>{
   if(!memoryWall||!memory.movie)return;
   const score=Math.max(0,Math.min(5,parseInt(memory.rating,10)||0));
   const recordedAt=memory.recordedAt||new Date().toISOString();
-  const poster=memory.poster||communityPosterFallback(memory.movie);
+  const poster=memory.posterUrl||memory.poster||communityPosterFromPath(memory.posterPath,memory.movie);
   const isLocal=!!memory.isLocal;
   const reviewId=communityReviewId(memory);
   const card=document.createElement('article');card.className='memory-case is-visible';card.tabIndex=0;card.setAttribute('aria-label',`Open ${memory.name||'Anonymous'}'s review of ${memory.movie}`);
-  card.dataset.reviewId=reviewId;card.dataset.localReview=isLocal?'true':'false';card.dataset.movie=memory.movie;card.dataset.reviewTitle=memory['review-title']||'Community review';card.dataset.rating=String(score);card.dataset.author=memory.name||'Anonymous';card.dataset.date=recordedAt;card.dataset.cinema=memory.cinema||'Cinema memory';card.dataset.poster=poster;card.dataset.experience=memory.experience||'A cinema memory worth keeping.';card.dataset.preview=memory.preview||memory.experience||'A cinema memory worth keeping.';card.dataset.before=memory['feeling-before']||'-';card.dataset.after=memory['feeling-after']||'-';card.dataset.recommend=memory.recommend||'Maybe';
+  card.dataset.reviewId=reviewId;card.dataset.localReview=isLocal?'true':'false';card.dataset.movie=memory.movie;card.dataset.tmdbId=memory.tmdbId||'';card.dataset.releaseYear=memory.releaseYear||'';card.dataset.posterPath=memory.posterPath||'';card.dataset.reviewTitle=memory['review-title']||'Community review';card.dataset.rating=String(score);card.dataset.author=memory.name||'Anonymous';card.dataset.date=recordedAt;card.dataset.cinema=memory.cinema||'Cinema memory';card.dataset.poster=poster;card.dataset.experience=memory.experience||'A cinema memory worth keeping.';card.dataset.preview=memory.preview||memory.experience||'A cinema memory worth keeping.';card.dataset.before=memory['feeling-before']||'-';card.dataset.after=memory['feeling-after']||'-';card.dataset.recommend=memory.recommend||'Maybe';
   const image=document.createElement('img');image.src=poster;image.alt=`Poster thumbnail for ${memory.movie}`;image.loading='lazy';image.onerror=()=>{image.onerror=null;image.src=communityPosterFallback(memory.movie);card.dataset.poster=image.src;};
   const spine=document.createElement('span');spine.className='case-spine';
   const rating=document.createElement('span');rating.className='memory-rating';rating.textContent='★'.repeat(score)+'☆'.repeat(5-score);
@@ -1517,6 +1637,28 @@ memoryWall?.addEventListener('keydown',event=>{
   }
 });
 communityDialog?.addEventListener('click',event=>{if(event.target===communityDialog)communityDialog.close();});
+communityMovieInput?.addEventListener('input',()=>{
+  const query=communityMovieInput.value.trim();
+  if(selectedCommunityMovie&&query!==selectedCommunityMovie.displayTitle&&query!==selectedCommunityMovie.title)clearCommunityMovieSelection();
+  searchCommunityMovies(query);
+});
+communityMovieInput?.addEventListener('focus',()=>{
+  const query=communityMovieInput.value.trim();
+  if(query.length>=2&&!selectedCommunityMovie)searchCommunityMovies(query);
+});
+communityMovieInput?.addEventListener('keydown',event=>{
+  if(event.key==='Escape')hideCommunityMovieSuggestions();
+  if(event.key==='Enter'&&communityMovieSuggestions&&!communityMovieSuggestions.hidden){
+    const firstSuggestion=communityMovieSuggestions.querySelector('.movie-suggestion');
+    if(firstSuggestion){
+      event.preventDefault();
+      firstSuggestion.click();
+    }
+  }
+});
+document.addEventListener('click',event=>{
+  if(!communityForm?.contains(event.target))hideCommunityMovieSuggestions();
+});
 const updateGraceControls=()=>{
   if(!memoryWall)return;
   memoryWall.querySelectorAll('.memory-case[data-local-review="true"]').forEach(card=>{
@@ -1555,14 +1697,35 @@ communityForm?.addEventListener('submit',async event=>{
   event.preventDefault(); const message=communityForm.querySelector('[data-community-message]'); message.textContent='Saving your cinema memory…';
   const formData=new FormData(communityForm);
   const memory=Object.fromEntries(formData.entries());
-  memory.poster=String(memory.poster||'').trim();
-  if(!memory.poster){
-    message.textContent='Finding a poster for your review…';
-    memory.poster=await fetchCommunityPoster(memory.movie);
+  if(selectedCommunityMovie&&(communityMovieInput.value.trim()===selectedCommunityMovie.displayTitle||communityMovieInput.value.trim()===selectedCommunityMovie.title)){
+    memory.movie=selectedCommunityMovie.title;
+    memory.tmdbId=selectedCommunityMovie.tmdbId;
+    memory.releaseYear=selectedCommunityMovie.releaseYear;
+    memory.posterPath=selectedCommunityMovie.posterPath;
+    memory.poster=selectedCommunityMovie.posterUrl;
+    memory.posterUrl=selectedCommunityMovie.posterUrl;
+    formData.set('movie',memory.movie);
+    formData.set('tmdbId',memory.tmdbId);
+    formData.set('releaseYear',memory.releaseYear);
+    formData.set('posterPath',memory.posterPath);
+    formData.set('poster',memory.poster);
   }
-  if(!memory.poster)memory.poster=communityPosterFallback(memory.movie);
-  formData.set('poster',memory.poster);
+  memory.poster=String(memory.poster||'').trim();
+  memory.posterPath=String(memory.posterPath||'').trim();
+  memory.posterUrl=String(memory.posterUrl||memory.poster||'').trim();
+  if(!memory.posterUrl&&memory.posterPath){
+    memory.posterUrl=communityPosterFromPath(memory.posterPath,memory.movie);
+    memory.poster=memory.posterUrl;
+    formData.set('poster',memory.posterUrl);
+  }
+  if(!memory.posterUrl){
+    message.textContent='Finding a poster for your review…';
+    memory.posterUrl=await fetchCommunityPoster(memory.movie);
+    memory.poster=memory.posterUrl;
+    formData.set('poster',memory.posterUrl);
+  }
+  if(!memory.posterUrl){memory.posterUrl=communityPosterFallback(memory.movie);memory.poster=memory.posterUrl;formData.set('poster',memory.posterUrl);}
   const saved=savedCommunityMemories(); const storedMemory={...memory,id:globalThis.crypto?.randomUUID?.()||`${Date.now()}-${Math.random().toString(16).slice(2)}`,recordedAt:new Date().toISOString()}; saved.push(storedMemory); persistCommunityMemories(saved);
   if(!['localhost','127.0.0.1'].includes(location.hostname)){try{await fetch('/',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams(formData).toString()});}catch{message.textContent='Saved on this device, but the online form could not be reached.';return;}}
-  addMemoryCard({...storedMemory,isLocal:true}); communityForm.reset(); message.textContent='Your review has been added. You can delete it for 1 minute.';
+  addMemoryCard({...storedMemory,isLocal:true}); communityForm.reset(); clearCommunityMovieSelection(); hideCommunityMovieSuggestions(); message.textContent='Your review has been added. You can delete it for 1 minute.';
 });
