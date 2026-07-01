@@ -1342,11 +1342,23 @@ const communityDialogContent=document.querySelector('[data-community-dialog-cont
 const communityCurrent=document.querySelector('[data-community-current]');
 const communityTotal=document.querySelector('[data-community-total]');
 const escapeHTML=value=>String(value??'').replace(/[&<>"']/g,character=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));
+const communityStorageKey='cinemaCommunityMemories';
+const communityGraceMs=60000;
+let communityGraceTimer;
 const formatCommunityDate=value=>{
   const date=value?new Date(value):new Date();
   if(Number.isNaN(date.getTime()))return value||'Today';
   return date.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
 };
+const communityReviewId=memory=>memory.id||`${memory.recordedAt||''}|${memory.movie||''}|${memory.name||''}|${memory['review-title']||''}`;
+const formatGraceTime=milliseconds=>{
+  const totalSeconds=Math.max(0,Math.ceil(milliseconds/1000));
+  return `${String(Math.floor(totalSeconds/60)).padStart(2,'0')}:${String(totalSeconds%60).padStart(2,'0')}`;
+};
+const savedCommunityMemories=()=>{
+  try{return JSON.parse(localStorage.getItem(communityStorageKey)||'[]');}catch{return [];}
+};
+const persistCommunityMemories=memories=>localStorage.setItem(communityStorageKey,JSON.stringify(memories));
 const openCommunityReview=card=>{
   if(!communityDialog||!communityDialogContent||!card)return;
   const data=card.dataset;
@@ -1377,8 +1389,10 @@ const addMemoryCard=memory=>{
   const score=Math.max(0,Math.min(5,parseInt(memory.rating,10)||0));
   const recordedAt=memory.recordedAt||new Date().toISOString();
   const poster=memory.poster||'images/movie-poster-fallback.svg';
+  const isLocal=!!memory.isLocal;
+  const reviewId=communityReviewId(memory);
   const card=document.createElement('article');card.className='memory-case is-visible';card.tabIndex=0;card.setAttribute('aria-label',`Open ${memory.name||'Anonymous'}'s review of ${memory.movie}`);
-  card.dataset.movie=memory.movie;card.dataset.reviewTitle=memory['review-title']||'Community review';card.dataset.rating=String(score);card.dataset.author=memory.name||'Anonymous';card.dataset.date=recordedAt;card.dataset.cinema=memory.cinema||'Cinema memory';card.dataset.poster=poster;card.dataset.experience=memory.experience||'A cinema memory worth keeping.';card.dataset.preview=memory.preview||memory.experience||'A cinema memory worth keeping.';card.dataset.before=memory['feeling-before']||'-';card.dataset.after=memory['feeling-after']||'-';card.dataset.recommend=memory.recommend||'Maybe';
+  card.dataset.reviewId=reviewId;card.dataset.localReview=isLocal?'true':'false';card.dataset.movie=memory.movie;card.dataset.reviewTitle=memory['review-title']||'Community review';card.dataset.rating=String(score);card.dataset.author=memory.name||'Anonymous';card.dataset.date=recordedAt;card.dataset.cinema=memory.cinema||'Cinema memory';card.dataset.poster=poster;card.dataset.experience=memory.experience||'A cinema memory worth keeping.';card.dataset.preview=memory.preview||memory.experience||'A cinema memory worth keeping.';card.dataset.before=memory['feeling-before']||'-';card.dataset.after=memory['feeling-after']||'-';card.dataset.recommend=memory.recommend||'Maybe';
   const image=document.createElement('img');image.src=poster;image.alt=`Poster thumbnail for ${memory.movie}`;image.loading='lazy';image.onerror=()=>{image.onerror=null;image.src='images/movie-poster-fallback.svg';};
   const spine=document.createElement('span');spine.className='case-spine';
   const rating=document.createElement('span');rating.className='memory-rating';rating.textContent='★'.repeat(score)+'☆'.repeat(5-score);
@@ -1386,7 +1400,14 @@ const addMemoryCard=memory=>{
   const reviewTitle=document.createElement('em');reviewTitle.textContent=memory['review-title']||'Community review';
   const preview=document.createElement('p');preview.textContent=memory.preview||memory.experience||'A cinema memory worth keeping.';
   const byline=document.createElement('small');byline.textContent=`${memory.name||'Anonymous'} · ${formatCommunityDate(recordedAt)}`;
-  spine.append(rating,title,reviewTitle,preview,byline);card.append(image,spine);memoryWall.append(card);communityCards=[...memoryWall.querySelectorAll('.memory-case')];updateCommunityDeck(communityCards.length-1);
+  spine.append(rating,title,reviewTitle,preview,byline);
+  if(isLocal){
+    const controls=document.createElement('div');controls.className='grace-controls';controls.hidden=true;
+    const countdown=document.createElement('span');countdown.className='grace-countdown';countdown.setAttribute('aria-live','polite');
+    const deleteButton=document.createElement('button');deleteButton.type='button';deleteButton.className='grace-delete';deleteButton.dataset.deleteReview=reviewId;deleteButton.textContent='Delete';
+    controls.append(countdown,deleteButton);spine.append(controls);
+  }
+  card.append(image,spine);memoryWall.append(card);communityCards=[...memoryWall.querySelectorAll('.memory-case')];updateCommunityDeck(communityCards.length-1);updateGraceControls();
 };
 let communityActiveIndex=0;
 let communityCards=memoryWall?[...memoryWall.querySelectorAll('.memory-case')]:[];
@@ -1444,6 +1465,20 @@ communityArchive?.addEventListener('wheel',event=>{
   flushCommunityWheel();
 },{passive:false});
 memoryWall?.addEventListener('click',event=>{
+  const deleteButton=event.target.closest('[data-delete-review]');
+  if(deleteButton){
+    event.preventDefault();
+    event.stopPropagation();
+    const reviewId=deleteButton.dataset.deleteReview;
+    const card=deleteButton.closest('.memory-case');
+    persistCommunityMemories(savedCommunityMemories().filter(memory=>communityReviewId(memory)!==reviewId));
+    const deletedIndex=communityCards.indexOf(card);
+    card?.remove();
+    communityCards=memoryWall?[...memoryWall.querySelectorAll('.memory-case')]:[];
+    updateCommunityDeck(Math.min(deletedIndex>-1?deletedIndex:communityActiveIndex,Math.max(0,communityCards.length-1)));
+    updateGraceControls();
+    return;
+  }
   const card=event.target.closest('.memory-case');
   if(!card||!memoryWall.contains(card))return;
   const index=parseInt(card.dataset.index,10);
@@ -1465,12 +1500,34 @@ memoryWall?.addEventListener('keydown',event=>{
   }
 });
 communityDialog?.addEventListener('click',event=>{if(event.target===communityDialog)communityDialog.close();});
-JSON.parse(localStorage.getItem('cinemaCommunityMemories')||'[]').forEach(addMemoryCard);
+const updateGraceControls=()=>{
+  if(!memoryWall)return;
+  memoryWall.querySelectorAll('.memory-case[data-local-review="true"]').forEach(card=>{
+    const controls=card.querySelector('.grace-controls');
+    if(!controls)return;
+    const remaining=communityGraceMs-(Date.now()-new Date(card.dataset.date).getTime());
+    if(remaining<=0){
+      controls.hidden=true;
+      return;
+    }
+    controls.hidden=false;
+    const countdown=controls.querySelector('.grace-countdown');
+    if(countdown)countdown.textContent=`You can delete this review for ${formatGraceTime(remaining)}`;
+  });
+  const hasActiveGrace=[...memoryWall.querySelectorAll('.memory-case[data-local-review="true"]')].some(card=>{
+    const remaining=communityGraceMs-(Date.now()-new Date(card.dataset.date).getTime());
+    return remaining>0;
+  });
+  if(hasActiveGrace&&!communityGraceTimer)communityGraceTimer=setInterval(updateGraceControls,1000);
+  if(!hasActiveGrace&&communityGraceTimer){clearInterval(communityGraceTimer);communityGraceTimer=null;}
+};
+savedCommunityMemories().forEach(memory=>addMemoryCard({...memory,isLocal:true}));
 communityCards=memoryWall?[...memoryWall.querySelectorAll('.memory-case')]:[];
 updateCommunityDeck(0);
+updateGraceControls();
 communityForm?.addEventListener('submit',async event=>{
   event.preventDefault(); const message=communityForm.querySelector('[data-community-message]'); message.textContent='Saving your cinema memory…';
-  const memory=Object.fromEntries(new FormData(communityForm).entries()); const saved=JSON.parse(localStorage.getItem('cinemaCommunityMemories')||'[]'); const storedMemory={...memory,recordedAt:new Date().toISOString()}; saved.push(storedMemory); localStorage.setItem('cinemaCommunityMemories',JSON.stringify(saved));
+  const memory=Object.fromEntries(new FormData(communityForm).entries()); const saved=savedCommunityMemories(); const storedMemory={...memory,id:globalThis.crypto?.randomUUID?.()||`${Date.now()}-${Math.random().toString(16).slice(2)}`,recordedAt:new Date().toISOString()}; saved.push(storedMemory); persistCommunityMemories(saved);
   if(!['localhost','127.0.0.1'].includes(location.hostname)){try{await fetch('/',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams(new FormData(communityForm)).toString()});}catch{message.textContent='Saved on this device, but the online form could not be reached.';return;}}
-  addMemoryCard(storedMemory); communityForm.reset(); message.textContent='Your review has been added to the shelf. Thank you.';
+  addMemoryCard({...storedMemory,isLocal:true}); communityForm.reset(); message.textContent='Your review has been added. You can delete it for 1 minute.';
 });
