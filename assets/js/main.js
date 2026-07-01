@@ -1343,6 +1343,7 @@ const communityCurrent=document.querySelector('[data-community-current]');
 const communityTotal=document.querySelector('[data-community-total]');
 const escapeHTML=value=>String(value??'').replace(/[&<>"']/g,character=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));
 const communityStorageKey='cinemaCommunityMemories';
+const communityTestCleanupKey='cinemaLatestTestReviewRemoved';
 const communityGraceMs=60000;
 let communityGraceTimer;
 const formatCommunityDate=value=>{
@@ -1405,7 +1406,7 @@ const addMemoryCard=memory=>{
     const controls=document.createElement('div');controls.className='grace-controls';controls.hidden=true;
     const countdown=document.createElement('span');countdown.className='grace-countdown';countdown.setAttribute('aria-live','polite');
     const deleteButton=document.createElement('button');deleteButton.type='button';deleteButton.className='grace-delete';deleteButton.dataset.deleteReview=reviewId;deleteButton.textContent='Delete';
-    controls.append(countdown,deleteButton);spine.append(controls);
+    controls.append(countdown,deleteButton);card.append(controls);
   }
   card.append(image,spine);memoryWall.append(card);communityCards=[...memoryWall.querySelectorAll('.memory-case')];updateCommunityDeck(communityCards.length-1);updateGraceControls();
 };
@@ -1521,6 +1522,15 @@ const updateGraceControls=()=>{
   if(hasActiveGrace&&!communityGraceTimer)communityGraceTimer=setInterval(updateGraceControls,1000);
   if(!hasActiveGrace&&communityGraceTimer){clearInterval(communityGraceTimer);communityGraceTimer=null;}
 };
+if(!localStorage.getItem(communityTestCleanupKey)){
+  const memories=savedCommunityMemories();
+  if(memories.length){
+    memories.sort((a,b)=>new Date(a.recordedAt||0)-new Date(b.recordedAt||0));
+    memories.pop();
+    persistCommunityMemories(memories);
+  }
+  localStorage.setItem(communityTestCleanupKey,'true');
+}
 savedCommunityMemories().forEach(memory=>addMemoryCard({...memory,isLocal:true}));
 communityCards=memoryWall?[...memoryWall.querySelectorAll('.memory-case')]:[];
 updateCommunityDeck(0);
