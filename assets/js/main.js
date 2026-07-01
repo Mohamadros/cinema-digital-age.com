@@ -1360,14 +1360,30 @@ const savedCommunityMemories=()=>{
   try{return JSON.parse(localStorage.getItem(communityStorageKey)||'[]');}catch{return [];}
 };
 const persistCommunityMemories=memories=>localStorage.setItem(communityStorageKey,JSON.stringify(memories));
+const normalizeCommunityTitle=value=>String(value||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+const communityPosterFallback=title=>posterFallback(title||'Community Review');
+const fetchCommunityPoster=async title=>{
+  const fallback=communityPosterFallback(title);
+  if(!token||!title)return fallback;
+  try{
+    const data=await tmdb('/search/movie',{query:title,include_adult:'false',page:'1'});
+    const results=Array.isArray(data.results)?data.results:[];
+    const normalizedTitle=normalizeCommunityTitle(title);
+    const match=results.find(movie=>movie.poster_path&&normalizeCommunityTitle(movie.title)===normalizedTitle)||results.find(movie=>movie.poster_path);
+    return match?.poster_path?`${imageBase}${match.poster_path}`:fallback;
+  }catch{
+    return fallback;
+  }
+};
 const openCommunityReview=card=>{
   if(!communityDialog||!communityDialogContent||!card)return;
   const data=card.dataset;
   const score=Math.max(0,Math.min(5,parseInt(data.rating,10)||0));
-  const poster=escapeHTML(data.poster||'images/movie-poster-fallback.svg');
+  const fallbackPoster=escapeHTML(communityPosterFallback(data.movie));
+  const poster=escapeHTML(data.poster||communityPosterFallback(data.movie));
   communityDialogContent.innerHTML=`
     <div class="community-dialog-grid">
-      <img src="${poster}" alt="Poster for ${escapeHTML(data.movie||'community review')}" onerror="this.onerror=null;this.src='images/movie-poster-fallback.svg';">
+      <img src="${poster}" alt="Poster for ${escapeHTML(data.movie||'community review')}" onerror="this.onerror=null;this.src='${fallbackPoster}';">
       <div>
         <span class="memory-rating">${'★'.repeat(score)}${'☆'.repeat(5-score)}</span>
         <h3>${escapeHTML(data.movie||'Untitled film')}</h3>
@@ -1389,12 +1405,12 @@ const addMemoryCard=memory=>{
   if(!memoryWall||!memory.movie)return;
   const score=Math.max(0,Math.min(5,parseInt(memory.rating,10)||0));
   const recordedAt=memory.recordedAt||new Date().toISOString();
-  const poster=memory.poster||'images/movie-poster-fallback.svg';
+  const poster=memory.poster||communityPosterFallback(memory.movie);
   const isLocal=!!memory.isLocal;
   const reviewId=communityReviewId(memory);
   const card=document.createElement('article');card.className='memory-case is-visible';card.tabIndex=0;card.setAttribute('aria-label',`Open ${memory.name||'Anonymous'}'s review of ${memory.movie}`);
   card.dataset.reviewId=reviewId;card.dataset.localReview=isLocal?'true':'false';card.dataset.movie=memory.movie;card.dataset.reviewTitle=memory['review-title']||'Community review';card.dataset.rating=String(score);card.dataset.author=memory.name||'Anonymous';card.dataset.date=recordedAt;card.dataset.cinema=memory.cinema||'Cinema memory';card.dataset.poster=poster;card.dataset.experience=memory.experience||'A cinema memory worth keeping.';card.dataset.preview=memory.preview||memory.experience||'A cinema memory worth keeping.';card.dataset.before=memory['feeling-before']||'-';card.dataset.after=memory['feeling-after']||'-';card.dataset.recommend=memory.recommend||'Maybe';
-  const image=document.createElement('img');image.src=poster;image.alt=`Poster thumbnail for ${memory.movie}`;image.loading='lazy';image.onerror=()=>{image.onerror=null;image.src='images/movie-poster-fallback.svg';};
+  const image=document.createElement('img');image.src=poster;image.alt=`Poster thumbnail for ${memory.movie}`;image.loading='lazy';image.onerror=()=>{image.onerror=null;image.src=communityPosterFallback(memory.movie);card.dataset.poster=image.src;};
   const spine=document.createElement('span');spine.className='case-spine';
   const rating=document.createElement('span');rating.className='memory-rating';rating.textContent='★'.repeat(score)+'☆'.repeat(5-score);
   const title=document.createElement('strong');title.textContent=memory.movie;
@@ -1537,7 +1553,16 @@ updateCommunityDeck(0);
 updateGraceControls();
 communityForm?.addEventListener('submit',async event=>{
   event.preventDefault(); const message=communityForm.querySelector('[data-community-message]'); message.textContent='Saving your cinema memory…';
-  const memory=Object.fromEntries(new FormData(communityForm).entries()); const saved=savedCommunityMemories(); const storedMemory={...memory,id:globalThis.crypto?.randomUUID?.()||`${Date.now()}-${Math.random().toString(16).slice(2)}`,recordedAt:new Date().toISOString()}; saved.push(storedMemory); persistCommunityMemories(saved);
-  if(!['localhost','127.0.0.1'].includes(location.hostname)){try{await fetch('/',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams(new FormData(communityForm)).toString()});}catch{message.textContent='Saved on this device, but the online form could not be reached.';return;}}
+  const formData=new FormData(communityForm);
+  const memory=Object.fromEntries(formData.entries());
+  memory.poster=String(memory.poster||'').trim();
+  if(!memory.poster){
+    message.textContent='Finding a poster for your review…';
+    memory.poster=await fetchCommunityPoster(memory.movie);
+  }
+  if(!memory.poster)memory.poster=communityPosterFallback(memory.movie);
+  formData.set('poster',memory.poster);
+  const saved=savedCommunityMemories(); const storedMemory={...memory,id:globalThis.crypto?.randomUUID?.()||`${Date.now()}-${Math.random().toString(16).slice(2)}`,recordedAt:new Date().toISOString()}; saved.push(storedMemory); persistCommunityMemories(saved);
+  if(!['localhost','127.0.0.1'].includes(location.hostname)){try{await fetch('/',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams(formData).toString()});}catch{message.textContent='Saved on this device, but the online form could not be reached.';return;}}
   addMemoryCard({...storedMemory,isLocal:true}); communityForm.reset(); message.textContent='Your review has been added. You can delete it for 1 minute.';
 });
