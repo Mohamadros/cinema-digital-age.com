@@ -1421,13 +1421,12 @@ const moveCommunityDeck=direction=>{
 const flushCommunityWheel=()=>{
   if(communityAnimating||Math.abs(communityWheelDelta)<communityWheelThreshold)return;
   const direction=communityWheelDelta>0?1:-1;
-  communityWheelDelta-=direction*communityWheelThreshold;
+  communityWheelDelta=0;
   if(!moveCommunityDeck(direction))return;
   communityAnimating=true;
   clearTimeout(communityWheelTimer);
   communityWheelTimer=setTimeout(()=>{
     communityAnimating=false;
-    flushCommunityWheel();
   },communityAnimationMs);
 };
 communityArchive?.addEventListener('wheel',event=>{
@@ -1438,9 +1437,10 @@ communityArchive?.addEventListener('wheel',event=>{
   const canMove=direction>0?communityActiveIndex<communityCards.length-1:communityActiveIndex>0;
   if(!canMove)return;
   event.preventDefault();
+  if(communityAnimating)return;
   if(Math.sign(communityWheelDelta)&&Math.sign(communityWheelDelta)!==direction)communityWheelDelta=0;
   communityWheelDelta+=delta;
-  communityWheelDelta=Math.max(-120,Math.min(120,communityWheelDelta));
+  communityWheelDelta=Math.max(-communityWheelThreshold,Math.min(communityWheelThreshold,communityWheelDelta));
   flushCommunityWheel();
 },{passive:false});
 memoryWall?.addEventListener('click',event=>{
